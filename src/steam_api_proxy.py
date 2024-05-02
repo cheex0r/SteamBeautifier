@@ -3,12 +3,16 @@ import pprint
 import requests
 import time
 
+def get_owned_games(api_key, steam_id64):
+    url = f"http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key={api_key}&steamid={steam_id64}&include_appinfo=true"
+    owned_games = requests.get(url)
+    return owned_games.json()['response']['games']
+
 def has_600x900_grid_image(app_id):
     # Steam API endpoint for getting app details
     url = f"https://steamcdn-a.akamaihd.net/steam/apps/{app_id}/library_600x900.jpg"
 
     try:
-        time.sleep(0.1)
         # Send a GET request to the Steam API
         response = requests.get(url)
 
@@ -17,24 +21,20 @@ def has_600x900_grid_image(app_id):
              return True
               
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f"An error occurred fetching steam library image from steamcdn-a: {e}")
         return False
     return False
 
 def get_games_without_600x900_grid_image(api_key, steam_id):   
-    url = f"http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key={api_key}&steamid={steam_id}&include_appinfo=true"
-    owned_games = requests.get(url)
-    owned_games_json = owned_games.json()
-
+    owned_games_json = get_owned_games(api_key, steam_id)
     games_without_600x900_image = set()
 
-    for game in owned_games_json['response']['games']:
+    for game in owned_games_json:
         has_grid_image = has_600x900_grid_image(game['appid'])
         if not has_grid_image:
             games_without_600x900_image.add(game['appid'])
     
     return games_without_600x900_image
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Check for Steam games without 600x900 grid images.')

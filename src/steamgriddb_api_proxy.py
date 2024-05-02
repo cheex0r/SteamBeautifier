@@ -47,7 +47,11 @@ def get_url_from_data(api_key, url, game_id):
     if response.status_code == 200:
         data = response.json()  # Parse JSON response
         if data.get('success', False):  # Check if 'success' key is present in the response
-            response_url = data.get('data', [])[0].get('url', None)  # Access grid URL safely
+            try:
+                response_url = data.get('data', [])[0].get('url', None)  # Access grid URL safely
+            except:
+                print(f"No images found {game_id}")
+                return None
             if response_url is not None:
                 return response_url
             else:
