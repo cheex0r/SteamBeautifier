@@ -1,7 +1,5 @@
 import argparse
-import pprint
 import requests
-import time
 
 def get_gameid_from_steam_appid(api_key, steam_app_id):
     url = f"https://www.steamgriddb.com/api/v2/games/steam/{steam_app_id}"
