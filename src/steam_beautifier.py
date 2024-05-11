@@ -1,18 +1,40 @@
-import sys
-import argparse
+import json
 
 from steam_remove_whats_new import remove_whats_new
 from launch_steam import launch_steam
 
+def load_preferences():
+    try:
+        with open('config.json', 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return None
 
-parser = argparse.ArgumentParser(description='Check for Steam games without 600x900 grid images.')
-parser.add_argument('--launch', type=bool, help='Launch Steam', default=False)
-parser.add_argument('--bigpicture', type=bool, help='Start Steam in BicPicture mode', default=False)
-parser.add_argument('--steam_api_key', type=str, help='Steam API Key for fetching grid images')
-parser.add_argument('--steamgriddb_api_key', type=str, help='SteamGridDb API Key for fetching grid images')
-parser.add_argument('--steam_id', type=int, help='User\'s SteamID64')
-args = parser.parse_args()
+def save_preferences(preferences):
+    with open('config.json', 'w') as f:
+        json.dump(preferences, f)
 
-remove_whats_new()
-if args.launch or args.bigpicture:
-    launch_steam(args.bigpicture)
+def prompt_for_preferences():
+    preferences = {}
+    preferences['remove_whats_new'] = input("Remove What's New shelf? (True/False): ").lower() == 'true'
+    preferences['launch'] = input("Launch Steam? (True/False): ").lower() == 'true'
+    preferences['bigpicture'] = input("Start Steam in Big Picture mode? (True/False): ").lower() == 'true'
+    preferences['steam_api_key'] = input("Enter your Steam API Key: ")
+    preferences['steamgriddb_api_key'] = input("Enter your SteamGridDB API Key: ")
+    preferences['steam_id'] = int(input("Enter your SteamID64: "))
+    save_preferences(preferences)
+    return preferences
+
+def main():
+    preferences = load_preferences()
+    if not preferences:
+        preferences = prompt_for_preferences()
+    print("Preferences:", preferences)
+
+    if preferences['remove_whats_new']:
+        remove_whats_new()
+    if preferences['launch'] or preferences['bigpicture']:
+        launch_steam(preferences['bigpicture'])
+
+if __name__ == "__main__":
+    main()

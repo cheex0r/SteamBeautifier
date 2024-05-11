@@ -1,7 +1,6 @@
 import argparse
 import pprint
 import requests
-import time
 
 def get_owned_games(api_key, steam_id64):
     url = f"http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key={api_key}&steamid={steam_id64}&include_appinfo=true"
