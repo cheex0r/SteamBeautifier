@@ -3,10 +3,11 @@ import os
 from steam_directory_finder import get_steam_path
 
 paths = ['steamui', 'css', 'chunk~2dcc5aaf7.css']
-search = "libraryhome_UpdatesContainer_17uEB{"
+css_class_name = "_17uEBe5Ri8TMsnfELvs8-N"
 new_guts = "display: none !important;"
 
 def get_modified_steam_css(data):
+    search = css_class_name + "{"
     index_start = data.find(search)
     if index_start == -1:
         print("String '{}' not found.".format(search))

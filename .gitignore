@@ -27,6 +27,7 @@ share/python-wheels/
 MANIFEST
 config.json
 
+
 # PyInstaller
 #  Usually these files are written by a python script from a template
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
@@ -75,6 +76,12 @@ docs/_build/
 # PyBuilder
 .pybuilder/
 target/
+
+# pipenv
+# Ignore virtual environment directories
+pipenv/
+# Ignore specific virtual environment directory
+myenv/
 
 # Jupyter Notebook
 .ipynb_checkpoints
