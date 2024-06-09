@@ -15,7 +15,6 @@ def download_missing_images(steam_api_key, steamgriddb_api_key, steam_id64, skip
     for game in owned_games:
         appid = game['appid']
         download_missing_game_images(steamgriddb_api_key, steam_id64, appid, skip_if_exists)
-        time.sleep(0.1)
 
 def download_missing_game_images(steamgriddb_api_key, steam_id64, appid, skip_if_exists=True):
     steam_path = get_steam_path()
@@ -29,6 +28,7 @@ def download_missing_game_images(steamgriddb_api_key, steam_id64, appid, skip_if
         if has_600x900_grid_image(appid):
             print(f"Skipping getting images for {appid} as Steam has a vertical image.")
             return
+        time.sleep(0.1)
         game_id = get_gameid_from_steam_appid(steamgriddb_api_key, appid)
         get_vertical_image(steamgriddb_api_key, game_id, steam_path, grid_path, appid)
         get_horizontal_image(steamgriddb_api_key, game_id, steam_path, grid_path, appid)

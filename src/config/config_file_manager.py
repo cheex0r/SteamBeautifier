@@ -32,6 +32,7 @@ class ConfigFileManager:
         if use_gui:
             root = tk.Tk()
             config_prompt = ConfigPromptGui(root, schema)
+            root.destroy()
         else:
             config_prompt = ConfigPromptCli(root, schema)
         user_preferences = config_prompt.get_user_preferences()
