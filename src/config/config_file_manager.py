@@ -1,24 +1,34 @@
 import os
 import json
+import sys
 import tkinter as tk
 
 from config.config_prompt_gui import ConfigPromptGui
 from config.config_prompt_cli import ConfigPromptCli
 
 class ConfigFileManager:
-    def get_config_path(self):
+    def _get_config_path(self):
         if os.name == 'nt':  # Windows
             return os.path.join(os.getenv('APPDATA'), 'Steam Beautifier', 'config.json')
         else:  # Linux and other OS
             return os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
         
-    def get_config_schema(self):
-        with open('config_schema.json', 'r') as schema_file:
+    def _get_config_schema(self):
+        schema_path = self._get_schema_path()
+        with open(schema_path, 'r') as schema_file:
             schema = json.load(schema_file)
         return schema
+    
+    def _get_schema_path(self):
+        # Check if running as a PyInstaller bundle
+        if hasattr(sys, '_MEIPASS'):
+            return os.path.join(sys._MEIPASS, 'config_schema.json')
+        else:
+            return 'config_schema.json'
 
-    def create_preferences(self, use_gui=True):
-        schema = self.get_config_schema()
+
+    def _create_preferences(self, use_gui=True):
+        schema = self._get_config_schema()
         if use_gui:
             root = tk.Tk()
             config_prompt = ConfigPromptGui(root, schema)
@@ -28,16 +38,16 @@ class ConfigFileManager:
         return user_preferences
 
 
-    def save_preferences(self, preferences):
-        config_path = self.get_config_path()
+    def _save_preferences(self, preferences):
+        config_path = self._get_config_path()
         os.makedirs(os.path.dirname(config_path), exist_ok=True)
         with open(config_path, 'w') as f:
             json.dump(preferences, f, indent=4)
 
         return config_path
 
-    def load_preferences(self):
-        config_path = self.get_config_path()
+    def _load_preferences(self):
+        config_path = self._get_config_path()
 
         if os.path.exists(config_path):
             with open(config_path, 'r') as f:
@@ -47,9 +57,9 @@ class ConfigFileManager:
         
         return preferences
 
-    def load_preferences_or_create(self):
-        preferences = self.load_preferences()
+    def load_or_create_preferences(self):
+        preferences = self._load_preferences()
         if not preferences:
-            preferences = self.create_preferences()
-            self.save_preferences(preferences)
+            preferences = self._create_preferences()
+            self._save_preferences(preferences)
         return preferences
