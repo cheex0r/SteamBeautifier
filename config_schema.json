@@ -1,12 +1,17 @@
 {
-    "remove_whats_new": {
+    "start_on_boot": {
         "type": "bool",
-        "description": "Remove What's New shelf?",
+        "description": "Start Steam Beautifier with your computer?",
         "default": false
     },
     "launch": {
         "type": "bool",
-        "description": "Launch Steam when Steam Beautifier starts?",
+        "description": "Launch Steam when Steam Beautifier starts? If starting on boot it's recommended to turn off Steam from starting on boot.",
+        "default": false
+    },
+    "remove_whats_new": {
+        "type": "bool",
+        "description": "Remove What's New shelf?",
         "default": false
     },
     "bigpicture": {

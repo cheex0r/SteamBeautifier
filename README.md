@@ -2,4 +2,4 @@
 A utility to enhance the visual aesthetics and organization of games within the Steam library.
 
 # Create Windows Executable
-pyinstaller --onefile --distpath .\installer\windows\dist .\src\launch_steam.py
+pyinstaller --onefile --distpath .\installer\windows\dist --add-data "config_schema.json;." --hidden-import win32com .\src\steam_beautifier.py
