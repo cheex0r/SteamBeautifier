@@ -1,6 +1,6 @@
 import json
 
-from steam_beautifier
+from config.config_file_manger import load_preferences
 from steam_remove_whats_new import remove_whats_new
 from launch_steam import launch_steam
 

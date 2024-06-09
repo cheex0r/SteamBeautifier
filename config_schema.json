@@ -17,7 +17,7 @@
     },
     "download-images": {
         "type": "bool",
-        "description": "Download missing grid art?",
+        "description": "Download missing grid art? (Requires API Keys)",
         "default": false
     },
     "steam_api_key": {
@@ -25,20 +25,23 @@
         "description": "Enter your Steam API Key",
         "url": "https://steamcommunity.com/dev/apikey",
         "link_text": "Get Steam API Key",
-        "default": ""
+        "default": "",
+        "depends_on": "download-images"
     },
     "steamgriddb_api_key": {
         "type": "str",
         "description": "Enter your SteamGridDB API Key",
         "url": "https://www.steamgriddb.com/profile/preferences",
         "link_text": "Get SteamGridDB API Key",
-        "default": ""
+        "default": "",
+        "depends_on": "download-images"
     },
     "steam_id": {
         "type": "str",
-        "description": "Enter your SteamID64",
+        "description": "Enter your SteamID64. Enter * for all users.",
         "url": "https://steamid.io/",
         "link_text": "Get SteamID64",
-        "default": "*"
+        "default": "*",
+        "depends_on": "download-images"
     }
 }

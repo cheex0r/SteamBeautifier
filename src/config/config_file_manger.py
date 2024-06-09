@@ -1,10 +1,15 @@
 import os
 import json
 
+def get_config_path():
+    if os.name == 'nt':  # Windows
+        return os.path.join(os.getenv('APPDATA'), 'Steam Beautifier', 'config.json')
+    else:  # Linux and other OS
+        return os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
+
 def save_preferences(preferences):
     # Define the path to the config file
-    config_dir = os.getenv('APPDATA', os.path.expanduser('~'))
-    config_path = os.path.join(config_dir, 'Steam Beautifier', 'config.json')
+    config_path = get_config_path()
     
     # Ensure the directory exists
     os.makedirs(os.path.dirname(config_path), exist_ok=True)
@@ -17,8 +22,7 @@ def save_preferences(preferences):
 
 def load_preferences():
     # Define the path to the config file
-    config_dir = os.getenv('APPDATA', os.path.expanduser('~'))
-    config_path = os.path.join(config_dir, 'Steam Beautifier', 'config.json')
+    config_path = get_config_path()
 
     # If the config file exists, load preferences from it
     if os.path.exists(config_path):
