@@ -5,9 +5,7 @@ import os
 import pprint
 import webbrowser
 
-from config_file_manger import load_preferences, save_preferences
-
-class ConfigApp:
+class ConfigPromptGui:
     def __init__(self, root, schema):
         self.root = root
         self.schema = schema
@@ -36,7 +34,7 @@ class ConfigApp:
 
             row += 1
 
-        self.save_button = tk.Button(root, text="Save", command=self.save_preferences)
+        self.save_button = tk.Button(root, text="Save", command=self.root.quit)
         self.save_button.grid(row=row, column=0, columnspan=3, pady=10)
 
         self.update_visibility()
@@ -60,15 +58,19 @@ class ConfigApp:
                 self.entries[key].config(state='normal')  # Ensure all entries are normal by default
         self.root.after(100, self.update_visibility)
 
-    def save_preferences(self):
-        config_path = save_preferences(self.preferences)
-        messagebox.showinfo("Configuration Saved", f"Preferences saved to {config_path}")
-        self.root.quit()
+    def get_user_preferences(self):
+        self.root.mainloop()
+        preferences = {}
+        for key, var in self.preferences.items():
+            preferences[key] = var.get()
+        return preferences
+
 
 if __name__ == "__main__":
     with open('config_schema.json', 'r') as schema_file:
         schema = json.load(schema_file)
 
     root = tk.Tk()
-    app = ConfigApp(root, schema)
-    root.mainloop()
+    config_app = ConfigPromptGui(root, schema)
+    user_preferences = config_app.get_user_preferences()
+    print("User Preferences:", user_preferences)
