@@ -9,9 +9,6 @@ OutputBaseFilename=Setup_SteamBeautifier
 Compression=lzma
 SolidCompression=yes
 
-[Tasks]
-Name: "StartMenuEntry" ; Description: "Start Steam Beautifier when Windows starts" ; GroupDescription: "Windows Startup"; MinVersion: 4,4;
-
 [Files]
 Source: "dist\steam_beautifier.exe"; DestDir: "{app}"
 ; Add any other application files here
