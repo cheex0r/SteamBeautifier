@@ -5,7 +5,12 @@ import requests
 def get_owned_games(api_key, steam_id64):
     url = f"http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key={api_key}&steamid={steam_id64}&include_appinfo=true"
     owned_games = requests.get(url)
-    return owned_games.json()['response']['games']
+    response_data = owned_games.json().get('response', {})
+    if 'games' in response_data:
+        return response_data['games']
+    else:
+        print(f"No games found or an error for user {steam_id64}.")
+        return []
 
 def has_600x900_grid_image(app_id):
     # Steam API endpoint for getting app details
