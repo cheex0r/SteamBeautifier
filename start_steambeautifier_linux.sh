@@ -56,7 +56,7 @@ source venv/bin/activate
 # Install dependencies
 pip install -r requirements.txt
 
-python3 src/steam_beautifier.py
+python3 src/main.py
 
 # Deactivate the virtual environment when done
 deactivate
