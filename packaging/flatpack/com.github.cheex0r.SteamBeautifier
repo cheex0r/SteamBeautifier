@@ -1,0 +1,30 @@
+{
+    "app-id": "com.github.cheex0r.SteamBeautifier",
+    "runtime": "org.freedesktop.Platform",
+    "runtime-version": "21.08",
+    "sdk": "org.freedesktop.Sdk",
+    "command": "steam-beautifier",
+    "finish-args": [
+        "--share=network",
+        "--share=ipc",
+        "--socket=x11",
+        "--socket=wayland",
+        "--filesystem=home"
+    ],
+    "modules": [
+        {
+            "name": "steam-beautifier",
+            "buildsystem": "simple",
+            "build-commands": [
+                "pip3 install --no-index --find-links=\"file://${PWD}/src\" ./src"
+            ],
+            "sources": [
+                {
+                    "type": "git",
+                    "url": "https://github.com/cheex0r/SteamBeautifier.git",
+                    "branch": "main"
+                }
+            ]
+        }
+    ]
+}
