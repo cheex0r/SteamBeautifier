@@ -38,6 +38,38 @@ config.json
 pip-log.txt
 pip-delete-this-directory.txt
 
+# Flatpak
+.flatpak-builder/
+*.flatpak
+*.flatpakref
+*.flatpakrepo
+*.flatpak-builder/
+*.flatpak-builder-cache/
+*.flatpak-builder-checkout/
+*.flatpak-builder-downloads/
+*.flatpak-builder-sources/
+*.flatpak-builder-export/
+*.flatpak-builder-results/
+*.flatpak-builder-logs/
+*.flatpak-builder-state/
+*.flatpak-builder-tmp/
+*.flatpak-builder-ostree/
+*.flatpak-builder-ostree-repo/
+*.flatpak-builder-ostree-checkout/
+*.flatpak-builder-ostree-refs/
+*.flatpak-builder-ostree-objects/
+*.flatpak-builder-ostree-deltas/
+*.flatpak-builder-ostree-commit/
+*.flatpak-builder-ostree-config/
+*.flatpak-builder-ostree-remote/
+*.flatpak-builder-ostree-summary/
+build-dir/metadata
+
+# Keep Flatpak manifest and configuration files
+!*.json
+!*.yaml
+!*.yml
+
 # Unit test / coverage reports
 htmlcov/
 .tox/
