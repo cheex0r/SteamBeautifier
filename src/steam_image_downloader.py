@@ -1,7 +1,10 @@
 import argparse
+import json
 import os
 import time
+from tqdm import tqdm
 
+from app_data import AppData
 from image_downloader import save_image_as_png
 from steam_api_proxy import get_owned_games, has_600x900_grid_image
 from steam_directory_finder import get_steam_path
@@ -12,6 +15,8 @@ from steamgriddb_api_proxy import (
     get_hero_url_from_gameid, get_logo_url_from_gameid
 )
 
+CACHE_FILE_NAME = 'games_with_vertical_grids.json'
+
 def download_missing_images(steam_api_key, steamgriddb_api_key, steam_id64, skip_if_exists=True):
     owned_games = get_owned_games(steam_api_key, steam_id64)
 
@@ -20,9 +25,16 @@ def download_missing_images(steam_api_key, steamgriddb_api_key, steam_id64, skip
     grid_path = ['userdata', str(steamid), 'config', 'grid']
     steam_grid_path = os.path.join(steam_path, *grid_path)
     existing_grid_images = get_appids_with_custom_images(steam_grid_path)
-    for game in owned_games:
+    steam_games_with_vertical_grid_images = get_steam_games_with_vertical_grids()
+    for game in tqdm(owned_games, desc="Processing Games"):
         appid = str(game['appid'])
-        download_missing_images_for_game(steamgriddb_api_key, appid, steam_grid_path, existing_grid_images, skip_if_exists)
+        download_missing_images_for_game(steamgriddb_api_key,
+                                         appid,
+                                         steam_grid_path,
+                                         existing_grid_images,
+                                         steam_games_with_vertical_grid_images,
+                                         skip_if_exists)
+    save_steam_games_with_vertical_grids(steam_games_with_vertical_grid_images)
 
 def get_appids_with_custom_images(path):
     existing_grid_images = set()
@@ -31,18 +43,28 @@ def get_appids_with_custom_images(path):
             # Vertical grid filenames end in p
             if 'p.' in entry.name: 
                 entry_name = entry.name.split('p')[0]
-                print(entry_name)
                 existing_grid_images.add(entry_name)
     return existing_grid_images
 
-def download_missing_images_for_game(steamgriddb_api_key, appid, steam_grid_path, existing_grid_images, skip_if_exists=True):
-    print("Getting images for appid: " + appid)
+def get_steam_games_with_vertical_grids():
+    return AppData.read_json_from_file(CACHE_FILE_NAME, set)
+
+def save_steam_games_with_vertical_grids(games):
+    AppData.save_json_to_file(CACHE_FILE_NAME, games, list)
+
+def download_missing_images_for_game(steamgriddb_api_key,
+                                     appid, steam_grid_path,
+                                     existing_grid_images,
+                                     steam_games_with_vertical_grid_images,
+                                     skip_if_exists=True):
+    # TODO: ivestigate why VRX_Player_Steam_Edition causes issues appid: 844880
+    if appid == '844880':
+        return
     try:
         if skip_if_exists and appid in existing_grid_images:
-            print(f"Skipping getting images for {appid} as images already exist locally.")
             return
-        if has_600x900_grid_image(appid):
-            print(f"Skipping getting images for {appid} as Steam has a vertical image.")
+        if appid in steam_games_with_vertical_grid_images or has_600x900_grid_image(appid):
+            steam_games_with_vertical_grid_images.add(appid)
             return
         time.sleep(0.1)
         game_id = get_gameid_from_steam_appid(steamgriddb_api_key, appid)
@@ -50,7 +72,6 @@ def download_missing_images_for_game(steamgriddb_api_key, appid, steam_grid_path
         get_horizontal_image(steamgriddb_api_key, game_id, steam_grid_path, appid)
         get_hero_image(steamgriddb_api_key, game_id, steam_grid_path, appid)
         get_logo_image(steamgriddb_api_key, game_id, steam_grid_path, appid)
-        
     except Exception as e:
         print(f"An exception occurred getting images for Steam AppId {appid}: {e}")
 
@@ -93,8 +114,8 @@ if __name__ == "__main__":
     if args.skip_if_exists is not None:
         skip_if_exists=True
     if args.steam_api_key is not None:
-        start_time = time.time()
+        # start_time = time.time()
         download_missing_images(args.steam_api_key, args.steamgriddb_api_key, args.steam_id64, args.skip_if_exists)
-        print("--- %s seconds ---" % (time.time() - start_time))
+        # print("--- %s seconds ---" % (time.time() - start_time))
     if args.steam_app_id is not None:
         download_missing_images_for_game(args.steamgriddb_api_key, args.steam_id64, args.steam_app_id, args.skip_if_exists)
