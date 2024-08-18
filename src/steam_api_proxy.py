@@ -29,7 +29,7 @@ def has_600x900_grid_image(app_id):
         return False
     return False
 
-def get_games_without_600x900_grid_image(api_key, steam_id):   
+def get_games_without_600x900_grid_image(api_key, steam_id):
     owned_games_json = get_owned_games(api_key, steam_id)
     games_without_600x900_image = set()
 
