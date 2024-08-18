@@ -13,7 +13,6 @@ def get_gameid_from_steam_appid(api_key, steam_app_id):
         if data.get('success', False):  # Check if 'success' key is present in the response
             game_id = data.get('data', {}).get('id', None)  # Access game ID safely
             if game_id is not None:
-                print(f"SteamID {steam_app_id} maps to GameID {game_id}")
                 return game_id
             else:
                 print(f"No game ID found for Steam app ID {steam_app_id}")
