@@ -12,7 +12,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'steam_beautifier=steam_beautifier:main',
+            'steam-beautifier=main:main',  # Point to the main function in src/main.py
         ],
     },
     author='Andrew',
