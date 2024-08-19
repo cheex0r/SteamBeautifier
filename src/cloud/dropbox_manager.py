@@ -28,9 +28,12 @@ class DropboxManager:
     
 
     def _refresh_dropbox_access_token(self, refresh_token):
+        preferences = self.config_manager._load_preferences()
+        refresh_token = preferences.get('dropbox_refresh_token')
+        app_key = preferences.get('dropbox_app_key')
+        app_secret = preferences.get('dropbox_app_secret')
+        
         url = "https://api.dropbox.com/oauth2/token"
-        app_key = self.config_manager.get_app_key()
-        app_secret = self.config_manager.get_app_secret()
         data = {
             "grant_type": "refresh_token",
             "refresh_token": refresh_token,
@@ -51,11 +54,19 @@ class DropboxManager:
             return None
 
 
+    # TODO: Encrypt sensitive data before saving to disk
     def _save_dropbox_access_token(self, access_token, refresh_token, expires_in=14400):
         preferences = self.config_manager._load_preferences() or {}
         preferences['dropbox_access_token'] = access_token
         preferences['dropbox_refresh_token'] = refresh_token
         preferences['dropbox_token_expiry'] = (datetime.now() + timedelta(seconds=expires_in)).strftime('%Y-%m-%d %H:%M:%S')
+        self.config_manager._save_preferences(preferences)
+
+
+    def _save_dropbox_app_details(self, app_key, app_secret):
+        preferences = self.config_manager._load_preferences() or {}
+        preferences['dropbox_app_key'] = app_key
+        preferences['dropbox_app_secret'] = app_secret
         self.config_manager._save_preferences(preferences)
 
 
@@ -79,6 +90,7 @@ class DropboxManager:
 
 
     def authenticate_dropbox(self, app_key, app_secret):
+        self._save_dropbox_app_details(app_key, app_secret)
         auth_flow = dropbox.DropboxOAuth2FlowNoRedirect(app_key, app_secret, token_access_type='offline')
         authorize_url = auth_flow.start()
         print("1. Go to: " + authorize_url)
