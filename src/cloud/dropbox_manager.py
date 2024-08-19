@@ -59,14 +59,10 @@ class DropboxManager:
         self.config_manager._save_preferences(preferences)
 
 
-    def _upload_file_to_dropbox(self, local_file_path):
-        access_token = self._get_dropbox_access_token()
-        if not access_token:
-            print("Dropbox access token not found. Please authenticate first.")
-            return
-
+    def _upload_file_to_dropbox(self, access_token, local_file_path, dropbox_folder):
         dbx = dropbox.Dropbox(access_token)
         with open(local_file_path, 'rb') as f:
+            dropbox_file_path = f"{dropbox_folder}/{os.path.basename(local_file_path)}"
             dbx.files_upload(f.read(), '/' + os.path.basename(local_file_path), mode=WriteMode('overwrite'))
         print(f"Successfully uploaded {os.path.basename(local_file_path)} to Dropbox")
 
@@ -136,3 +132,47 @@ class DropboxManager:
                         self._download_file_from_dropbox(access_token, dropbox_file_path, local_file_path)
         except dropbox.exceptions.ApiError as e:
             print(f"Error listing files in Dropbox folder: {e}")
+
+
+    def upload_newer_files(self, local_folder, dropbox_folder):
+        access_token = self._get_dropbox_access_token()
+        if not access_token:
+            print("Dropbox access token not found. Please authenticate first.")
+            return
+
+        dbx = dropbox.Dropbox(access_token)
+
+        try:
+            # List files in the Dropbox folder
+            try:
+                result = dbx.files_list_folder(dropbox_folder)
+                dropbox_files = {entry.name: entry for entry in result.entries if isinstance(entry, dropbox.files.FileMetadata)}
+            except dropbox.exceptions.ApiError as e:
+                dropbox_files = {}
+                print(f"Error listing files in Dropbox folder: {e}")
+
+            # Iterate over local files
+            for local_file_name in os.listdir(local_folder):
+                local_file_path = os.path.join(local_folder, local_file_name)
+                
+                if os.path.isfile(local_file_path):
+                    # Get local modification time and convert to UTC
+                    local_mod_time = datetime.fromtimestamp(os.path.getmtime(local_file_path), tz=timezone.utc)
+
+                    # Check if file exists in Dropbox
+                    if local_file_name in dropbox_files:
+                        dropbox_mod_time_utc = dropbox_files[local_file_name].client_modified.replace(tzinfo=timezone.utc)
+
+                        # Compare the two UTC datetime objects
+                        if local_mod_time > dropbox_mod_time_utc:
+                            print(f"Local file '{local_file_name}' is newer. Uploading...")
+                            self._upload_file_to_dropbox(access_token, local_file_path, dropbox_folder)
+                        else:
+                            print(f"Dropbox file '{local_file_name}' is newer or equal. Skipping upload.")
+                    else:
+                        # File does not exist in Dropbox, so upload it
+                        print(f"Dropbox file '{local_file_name}' does not exist. Uploading...")
+                        self._upload_file_to_dropbox(access_token, local_file_path, dropbox_folder)
+
+        except dropbox.exceptions.ApiError as e:
+            print(f"Error uploading files to Dropbox: {e}")
