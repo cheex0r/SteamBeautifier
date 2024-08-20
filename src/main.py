@@ -15,20 +15,23 @@ def main():
 
     StartOnBootManager.start_on_boot(preferences['start_on_boot'])
     steam_id64 = preferences['steam_id']
+    local_grid_file_path = get_grid_path_from_steamid64(steam_id64)
+    dropbox_file_path = [steam_id64, 'grid']
+    
     if preferences['remove_whats_new']:
         remove_whats_new()
     if preferences['launch'] or preferences['bigpicture']:
         launch_steam(preferences['bigpicture'])
     if preferences['dropbox_app_key']:
-        local_file_path = get_grid_path_from_steamid64(steam_id64)
-        dropbox_file_path = [steam_id64, 'grid']
         dropbox_manager = DropboxManager(config_file_manager)
-        dropbox_manager.upload_newer_files(local_file_path, dropbox_file_path)
-        dropbox_manager.download_newer_files(local_file_path, dropbox_file_path)
+        dropbox_manager.upload_newer_files(local_grid_file_path, dropbox_file_path)
     if preferences['download-images']:
         download_missing_images(preferences['steam_api_key'], 
                                 preferences['steamgriddb_api_key'], 
                                 steam_id64)
+    if preferences['dropbox_app_key']:
+        dropbox_manager = DropboxManager(config_file_manager)
+        dropbox_manager.download_newer_files(local_grid_file_path, dropbox_file_path)
 
 
 if __name__ == "__main__":
