@@ -1,4 +1,6 @@
+import concurrent.futures
 import dropbox
+import hashlib
 import os
 import requests
 from datetime import datetime, timedelta, timezone
@@ -143,6 +145,41 @@ class DropboxManager:
             print(f"Error listing files in Dropbox folder: {e}")
 
 
+    def _calculate_dropbox_content_hash(self, file_path):
+        """
+        Calculate the Dropbox content hash for a given file.
+        Dropbox content hash is calculated by splitting the file into 4MB chunks,
+        SHA-256 hashing each chunk, concatenating the results, and then hashing
+        the concatenated result again.
+        """
+        block_size = 4 * 1024 * 1024  # 4MB
+        hash_func = hashlib.sha256()
+        with open(file_path, 'rb') as f:
+            while True:
+                chunk = f.read(block_size)
+                if not chunk:
+                    break
+                chunk_hash = hashlib.sha256(chunk).digest()
+                hash_func.update(chunk_hash)
+        return hash_func.hexdigest()
+    
+
+    def _get_all_file_hashes_in_dropbox_folder(self, dbx, folder_path):
+        file_hashes = {}
+        try:
+            result = dbx.files_list_folder(folder_path)
+            file_hashes.update({entry.name: entry.content_hash for entry in result.entries if isinstance(entry, dropbox.files.FileMetadata)})
+
+            while result.has_more:
+                result = dbx.files_list_folder_continue(result.cursor)
+                file_hashes.update({entry.name: entry.content_hash for entry in result.entries if isinstance(entry, dropbox.files.FileMetadata)})
+
+        except dropbox.exceptions.ApiError as e:
+            print(f"Error listing files in Dropbox folder: {e}")
+
+        return file_hashes
+
+
     def upload_newer_files(self, local_folder, dropbox_folder_list):
         dropbox_folder_path = '/' + '/'.join(dropbox_folder_list)
         access_token = self._get_dropbox_access_token()
@@ -153,35 +190,24 @@ class DropboxManager:
         dbx = dropbox.Dropbox(access_token)
 
         try:
-            # List files in the Dropbox folder
-            try:
-                result = dbx.files_list_folder(dropbox_folder_path)
-                dropbox_files = {entry.name: entry for entry in result.entries if isinstance(entry, dropbox.files.FileMetadata)}
-            except dropbox.exceptions.ApiError as e:
-                dropbox_files = {}
-                print(f"Error listing files in Dropbox folder: {e}")
+            # Retrieve all file hashes in the Dropbox folder, handling pagination
+            dropbox_file_hashes = self._get_all_file_hashes_in_dropbox_folder(dbx, dropbox_folder_path)
 
-            # Iterate over local files
-            for local_file_name in tqdm(os.listdir(local_folder), desc="Uploading files to Dropbox"):
+            def process_file(local_file_name):
                 local_file_path = os.path.join(local_folder, local_file_name)
-                
                 if os.path.isfile(local_file_path):
-                    # Get local modification time and convert to UTC
-                    local_mod_time = datetime.fromtimestamp(os.path.getmtime(local_file_path), tz=timezone.utc)
-
-                    # Check if file exists in Dropbox
-                    if local_file_name in dropbox_files:
-                        dropbox_mod_time_utc = dropbox_files[local_file_name].client_modified.replace(tzinfo=timezone.utc)
-
-                        # Compare the two UTC datetime objects
-                        if local_mod_time > dropbox_mod_time_utc:
+                    local_file_hash = self._calculate_dropbox_content_hash(local_file_path)
+                    if local_file_name in dropbox_file_hashes:
+                        dropbox_file_hash = dropbox_file_hashes[local_file_name]
+                        if local_file_hash != dropbox_file_hash:
                             self._upload_file_to_dropbox(access_token, local_file_path, dropbox_folder_path)
-                        else:
-                            print(f"Dropbox file '{local_file_name}' is newer or equal. Skipping upload.")
                     else:
-                        # File does not exist in Dropbox, so upload it
-                        print(f"Dropbox file '{local_file_name}' does not exist. Uploading...")
                         self._upload_file_to_dropbox(access_token, local_file_path, dropbox_folder_path)
 
+            # Use ThreadPoolExecutor to parallelize the processing
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                list(tqdm(executor.map(process_file, os.listdir(local_folder)), total=len(os.listdir(local_folder)), desc="Uploading files to Dropbox"))
+
         except dropbox.exceptions.ApiError as e:
-            print(f"Error uploading files to Dropbox: {e}")
+            print(f"Error during the upload and verification process: {e}")
+
