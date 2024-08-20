@@ -89,6 +89,41 @@ class DropboxManager:
             print(f"Error downloading file: {e}")
 
 
+    def _calculate_dropbox_content_hash(self, file_path):
+        """
+        Calculate the Dropbox content hash for a given file.
+        Dropbox content hash is calculated by splitting the file into 4MB chunks,
+        SHA-256 hashing each chunk, concatenating the results, and then hashing
+        the concatenated result again.
+        """
+        block_size = 4 * 1024 * 1024  # 4MB
+        hash_func = hashlib.sha256()
+        with open(file_path, 'rb') as f:
+            while True:
+                chunk = f.read(block_size)
+                if not chunk:
+                    break
+                chunk_hash = hashlib.sha256(chunk).digest()
+                hash_func.update(chunk_hash)
+        return hash_func.hexdigest()
+    
+
+    def _get_all_file_hashes_in_dropbox_folder(self, dbx, folder_path):
+        file_hashes = {}
+        try:
+            result = dbx.files_list_folder(folder_path)
+            file_hashes.update({entry.name: entry.content_hash for entry in result.entries if isinstance(entry, dropbox.files.FileMetadata)})
+
+            while result.has_more:
+                result = dbx.files_list_folder_continue(result.cursor)
+                file_hashes.update({entry.name: entry.content_hash for entry in result.entries if isinstance(entry, dropbox.files.FileMetadata)})
+
+        except dropbox.exceptions.ApiError as e:
+            print(f"Error listing files in Dropbox folder: {e}")
+
+        return file_hashes
+
+
     def authenticate_dropbox(self, app_key, app_secret):
         self._save_dropbox_app_details(app_key, app_secret)
         auth_flow = dropbox.DropboxOAuth2FlowNoRedirect(app_key, app_secret, token_access_type='offline')
@@ -125,59 +160,30 @@ class DropboxManager:
             os.makedirs(local_folder)
 
         try:
-            # List files in the Dropbox folder
-            result = dbx.files_list_folder(dropbox_folder_path)
-            for entry in tqdm(result.entries, desc="Downloading files from Dropbox"):
-                if isinstance(entry, dropbox.files.FileMetadata):
-                    dropbox_file_path = entry.path_lower
-                    local_file_path = os.path.join(local_folder, os.path.basename(dropbox_file_path))
+            # Retrieve all file hashes in the Dropbox folder, handling pagination
+            dropbox_file_metadata = self._get_all_file_hashes_in_dropbox_folder(dbx, dropbox_folder_path)
+
+            def process_file(local_file_name):
+                local_file_path = os.path.join(local_folder, local_file_name)
+                if os.path.isfile(local_file_path):
+                    local_file_hash = self._calculate_dropbox_content_hash(local_file_path)
                     
-                    # Check if the local file exists and compare modification dates
-                    if os.path.exists(local_file_path):
-                        local_mod_time = datetime.fromtimestamp(os.path.getmtime(local_file_path), tz=timezone.utc)
-                        dropbox_mod_time_utc = entry.client_modified.replace(tzinfo=timezone.utc)
+                    if local_file_name in dropbox_file_metadata:
+                        dropbox_file_hash = dropbox_file_metadata[local_file_name]
 
-                        if dropbox_mod_time_utc  > local_mod_time:
-                            self._download_file_from_dropbox(access_token, dropbox_file_path, local_file_path)
+                        if local_file_hash != dropbox_file_hash:
+                            self._download_file_from_dropbox(access_token, dropbox_folder_path + '/' + local_file_name, local_file_path)
                     else:
-                        self._download_file_from_dropbox(access_token, dropbox_file_path, local_file_path)
-        except dropbox.exceptions.ApiError as e:
-            print(f"Error listing files in Dropbox folder: {e}")
+                        self._download_file_from_dropbox(access_token, dropbox_folder_path + '/' + local_file_name, local_file_path)
+                else:
+                    self._download_file_from_dropbox(access_token, dropbox_folder_path + '/' + local_file_name, local_file_path)
 
-
-    def _calculate_dropbox_content_hash(self, file_path):
-        """
-        Calculate the Dropbox content hash for a given file.
-        Dropbox content hash is calculated by splitting the file into 4MB chunks,
-        SHA-256 hashing each chunk, concatenating the results, and then hashing
-        the concatenated result again.
-        """
-        block_size = 4 * 1024 * 1024  # 4MB
-        hash_func = hashlib.sha256()
-        with open(file_path, 'rb') as f:
-            while True:
-                chunk = f.read(block_size)
-                if not chunk:
-                    break
-                chunk_hash = hashlib.sha256(chunk).digest()
-                hash_func.update(chunk_hash)
-        return hash_func.hexdigest()
-    
-
-    def _get_all_file_hashes_in_dropbox_folder(self, dbx, folder_path):
-        file_hashes = {}
-        try:
-            result = dbx.files_list_folder(folder_path)
-            file_hashes.update({entry.name: entry.content_hash for entry in result.entries if isinstance(entry, dropbox.files.FileMetadata)})
-
-            while result.has_more:
-                result = dbx.files_list_folder_continue(result.cursor)
-                file_hashes.update({entry.name: entry.content_hash for entry in result.entries if isinstance(entry, dropbox.files.FileMetadata)})
+            # Use ThreadPoolExecutor to parallelize the downloading process
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                list(tqdm(executor.map(process_file, os.listdir(local_folder)), total=len(os.listdir(local_folder)), desc="Downloading files from Dropbox"))
 
         except dropbox.exceptions.ApiError as e:
-            print(f"Error listing files in Dropbox folder: {e}")
-
-        return file_hashes
+            print(f"Error during the download and verification process: {e}")
 
 
     def upload_newer_files(self, local_folder, dropbox_folder_list):
