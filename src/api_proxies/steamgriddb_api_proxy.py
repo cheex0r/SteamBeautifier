@@ -38,7 +38,6 @@ def get_url_from_data(api_key, url, game_id):
     headers = {
         "Authorization": f"Bearer {api_key}"
     }
-    print ("Fetching streamgriddb grids from: " + url)
     response = requests.get(url, headers=headers)
     
     if response.status_code == 200:
