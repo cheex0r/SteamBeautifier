@@ -11,18 +11,18 @@ from api_proxies.steamgriddb_api_proxy import (
 )
 from data.app_data import AppData
 from downloader.image_downloader import save_image_as_png
-from steam.steam_directory_finder import get_steam_path
-from steam.steam_ids import steamid64_to_steamid
+from steam.steam_directory_finder import (
+    get_steam_path,
+    get_grid_path_from_steamid64
+)
 
 
 CACHE_FILE_NAME = 'games_with_vertical_grids.json'
 
 def download_missing_images(steam_api_key, steamgriddb_api_key, steam_id64, skip_if_exists=True):
     owned_games = get_owned_games(steam_api_key, steam_id64)
-
-    steamid = steamid64_to_steamid(steam_id64)
     steam_path = get_steam_path()
-    grid_path = ['userdata', str(steamid), 'config', 'grid']
+    grid_path = get_grid_path_from_steamid64(steam_id64)
     steam_grid_path = os.path.join(steam_path, *grid_path)
     existing_grid_images = get_appids_with_custom_images(steam_grid_path)
     steam_games_with_vertical_grid_images = get_steam_games_with_vertical_grids()
@@ -36,6 +36,7 @@ def download_missing_images(steam_api_key, steamgriddb_api_key, steam_id64, skip
                                          skip_if_exists)
     save_steam_games_with_vertical_grids(steam_games_with_vertical_grid_images)
 
+
 def get_appids_with_custom_images(path):
     existing_grid_images = set()
     with os.scandir(path) as it:
@@ -46,11 +47,14 @@ def get_appids_with_custom_images(path):
                 existing_grid_images.add(entry_name)
     return existing_grid_images
 
+
 def get_steam_games_with_vertical_grids():
     return AppData.read_json_from_file(CACHE_FILE_NAME, set)
 
+
 def save_steam_games_with_vertical_grids(games):
     AppData.save_json_to_file(CACHE_FILE_NAME, games, list)
+
 
 def download_missing_images_for_game(steamgriddb_api_key,
                                      appid, steam_grid_path,
@@ -75,29 +79,35 @@ def download_missing_images_for_game(steamgriddb_api_key,
     except Exception as e:
         print(f"An exception occurred getting images for Steam AppId {appid}: {e}")
 
+
 def get_logo_image(steamgriddb_api_key, gameid, steam_grid_path, appid):
     url = get_logo_url_from_gameid(steamgriddb_api_key, gameid)
     filename = str(appid) + "_logo.png"
     download_image(url, steam_grid_path, filename)
+
 
 def get_hero_image(steamgriddb_api_key, gameid, steam_grid_path, appid):
     url = get_hero_url_from_gameid(steamgriddb_api_key, gameid)
     filename = str(appid) + "_hero.png"
     download_image(url, steam_grid_path, filename)
 
+
 def get_horizontal_image(steamgriddb_api_key, gameid, steam_grid_path, appid):
     url = get_grid_url_from_gameid(steamgriddb_api_key, gameid, dimensions='920x430,460x215')
     filename = str(appid) + ".png"
     download_image(url, steam_grid_path, filename)
+
 
 def get_vertical_image(steamgriddb_api_key, gameid, steam_grid_path, appid):
     url = get_grid_url_from_gameid(steamgriddb_api_key, gameid)
     filename = str(appid) + "p.png"
     download_image(url, steam_grid_path, filename)
 
+
 def download_image(url, steam_grid_path, image_name):
     full_filepath = os.path.join(steam_grid_path, image_name)
     save_image_as_png(url, full_filepath)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Download ')
@@ -114,8 +124,6 @@ if __name__ == "__main__":
     if args.skip_if_exists is not None:
         skip_if_exists=True
     if args.steam_api_key is not None:
-        # start_time = time.time()
         download_missing_images(args.steam_api_key, args.steamgriddb_api_key, args.steam_id64, args.skip_if_exists)
-        # print("--- %s seconds ---" % (time.time() - start_time))
     if args.steam_app_id is not None:
         download_missing_images_for_game(args.steamgriddb_api_key, args.steam_id64, args.steam_app_id, args.skip_if_exists)

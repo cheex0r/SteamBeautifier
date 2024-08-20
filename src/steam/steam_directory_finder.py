@@ -1,12 +1,15 @@
 import os
 import sys
 
+from steam.steam_ids import steamid64_to_steamid
+
 
 def get_steam_path():
     if sys.platform.startswith('linux'):
         return find_steam_path_unix()
     elif sys.platform.startswith('win'):
         return find_steam_path_windows()
+
 
 def find_steam_path_windows():
     steam_paths = [
@@ -29,6 +32,7 @@ def find_steam_path_windows():
     
     return None
 
+
 def find_steam_path_unix():
     home = os.path.expanduser("~")
     steam_paths = [
@@ -41,7 +45,15 @@ def find_steam_path_unix():
             return path
 
     return None
-    
+
+
+def get_grid_path_from_steamid64(steam_id64):
+    steamid = steamid64_to_steamid(steam_id64)
+    steam_path = get_steam_path()
+    grid_path = ['userdata', str(steamid), 'config', 'grid']
+    return os.path.join(steam_path, *grid_path)
+
+
 if __name__ == "__main__":
     print("Finding path to Steam.")
     # If the script is executed directly, call the main function

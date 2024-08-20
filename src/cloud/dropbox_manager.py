@@ -2,6 +2,7 @@ import dropbox
 import os
 import requests
 from datetime import datetime, timedelta, timezone
+from tqdm import tqdm
 
 from dropbox.files import WriteMode
 from dropbox.exceptions import AuthError
@@ -74,7 +75,6 @@ class DropboxManager:
         with open(local_file_path, 'rb') as f:
             dropbox_file_path = f"{dropbox_folder}/{os.path.basename(local_file_path)}"
             dbx.files_upload(f.read(), dropbox_file_path, mode=WriteMode('overwrite'))
-        print(f"Successfully uploaded {os.path.basename(local_file_path)} to Dropbox")
 
 
     def _download_file_from_dropbox(self, access_token, dropbox_path, local_path):
@@ -83,7 +83,6 @@ class DropboxManager:
             metadata, res = dbx.files_download(path=dropbox_path)
             with open(local_path, 'wb') as f:
                 f.write(res.content)
-            print(f"Successfully downloaded {dropbox_path} to {local_path}")
         except dropbox.exceptions.ApiError as e:
             print(f"Error downloading file: {e}")
 
@@ -110,7 +109,7 @@ class DropboxManager:
             print(f"An unexpected error occurred: {e}")
 
 
-    def download_newer_files(self, dropbox_folder_list, local_folder):
+    def download_newer_files(self, local_folder, dropbox_folder_list):
         dropbox_folder_path = '/' + '/'.join(dropbox_folder_list)
         access_token = self._get_dropbox_access_token()
         if not access_token:
@@ -126,7 +125,7 @@ class DropboxManager:
         try:
             # List files in the Dropbox folder
             result = dbx.files_list_folder(dropbox_folder_path)
-            for entry in result.entries:
+            for entry in tqdm(result.entries, desc="Downloading files from Dropbox"):
                 if isinstance(entry, dropbox.files.FileMetadata):
                     dropbox_file_path = entry.path_lower
                     local_file_path = os.path.join(local_folder, os.path.basename(dropbox_file_path))
@@ -138,8 +137,6 @@ class DropboxManager:
 
                         if dropbox_mod_time_utc  > local_mod_time:
                             self._download_file_from_dropbox(access_token, dropbox_file_path, local_file_path)
-                        else:
-                            print(f"Local file '{local_file_path}' is newer. Skipping download.")
                     else:
                         self._download_file_from_dropbox(access_token, dropbox_file_path, local_file_path)
         except dropbox.exceptions.ApiError as e:
@@ -148,7 +145,6 @@ class DropboxManager:
 
     def upload_newer_files(self, local_folder, dropbox_folder_list):
         dropbox_folder_path = '/' + '/'.join(dropbox_folder_list)
-
         access_token = self._get_dropbox_access_token()
         if not access_token:
             print("Dropbox access token not found. Please authenticate first.")
@@ -166,7 +162,7 @@ class DropboxManager:
                 print(f"Error listing files in Dropbox folder: {e}")
 
             # Iterate over local files
-            for local_file_name in os.listdir(local_folder):
+            for local_file_name in tqdm(os.listdir(local_folder), desc="Uploading files to Dropbox"):
                 local_file_path = os.path.join(local_folder, local_file_name)
                 
                 if os.path.isfile(local_file_path):
@@ -179,7 +175,6 @@ class DropboxManager:
 
                         # Compare the two UTC datetime objects
                         if local_mod_time > dropbox_mod_time_utc:
-                            print(f"Local file '{local_file_name}' is newer. Uploading...")
                             self._upload_file_to_dropbox(access_token, local_file_path, dropbox_folder_path)
                         else:
                             print(f"Dropbox file '{local_file_name}' is newer or equal. Skipping upload.")
