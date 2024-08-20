@@ -1,7 +1,7 @@
 import os
 import platform
-import sys
 import subprocess
+import sys
 
 from steam.steam_directory_finder import get_steam_path
 
@@ -43,8 +43,6 @@ def launch_steam_windows(is_bigpicture=False):
     except Exception as e:
         print("An error occurred while launching Steam:", e)
 
-import subprocess
-import sys
 
 def launch_steam_linux(is_bigpicture=False):
     print("Launching Steam on Linux")

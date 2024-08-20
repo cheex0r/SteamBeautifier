@@ -12,7 +12,6 @@ def save_image_as_png(url, filename):
             image_data = BytesIO(response.content)
             image = Image.open(image_data)
             image.save(filename, format='PNG')
-            print(f"Image saved successfully as {filename}")
         else:
             print(f"Failed to download image from {url}. Status code: {response.status_code}")
     except Exception as e:
@@ -27,4 +26,3 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     games = save_image_as_png(args.url, args.filename)
-
