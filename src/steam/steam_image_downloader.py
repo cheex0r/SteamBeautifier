@@ -23,7 +23,7 @@ def download_missing_images(steam_api_key, steamgriddb_api_key, steam_id64, skip
     owned_games = get_owned_games(steam_api_key, steam_id64)
     steam_path = get_steam_path()
     grid_path = get_grid_path_from_steamid64(steam_id64)
-    steam_grid_path = os.path.join(steam_path, *grid_path)
+    steam_grid_path = os.path.join(steam_path, grid_path)
     existing_grid_images = get_appids_with_custom_images(steam_grid_path)
     steam_games_with_vertical_grid_images = get_steam_games_with_vertical_grids()
     for game in tqdm(owned_games, desc="Downloading images from SteamGridDB"):
