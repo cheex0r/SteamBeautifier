@@ -110,7 +110,8 @@ class DropboxManager:
             print(f"An unexpected error occurred: {e}")
 
 
-    def download_newer_files(self, dropbox_folder, local_folder):
+    def download_newer_files(self, dropbox_folder_list, local_folder):
+        dropbox_folder_path = '/' + '/'.join(dropbox_folder_list)
         access_token = self._get_dropbox_access_token()
         if not access_token:
             print("Dropbox access token not found. Please authenticate first.")
@@ -124,7 +125,7 @@ class DropboxManager:
 
         try:
             # List files in the Dropbox folder
-            result = dbx.files_list_folder(dropbox_folder)
+            result = dbx.files_list_folder(dropbox_folder_path)
             for entry in result.entries:
                 if isinstance(entry, dropbox.files.FileMetadata):
                     dropbox_file_path = entry.path_lower
