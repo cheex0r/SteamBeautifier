@@ -3,16 +3,16 @@ import os
 import time
 from tqdm import tqdm
 
-from data.app_data import AppData
-from downloader.image_downloader import save_image_as_png
 from api_proxies.steam_api_proxy import get_owned_games, has_600x900_grid_image
-from steam_directory_finder import get_steam_path
-from steam_ids import steamid64_to_steamid
 from api_proxies.steamgriddb_api_proxy import (
     get_gameid_from_steam_appid,
     get_grid_url_from_gameid,
     get_hero_url_from_gameid, get_logo_url_from_gameid
 )
+from data.app_data import AppData
+from downloader.image_downloader import save_image_as_png
+from steam.steam_directory_finder import get_steam_path
+from steam.steam_ids import steamid64_to_steamid
 
 
 CACHE_FILE_NAME = 'games_with_vertical_grids.json'

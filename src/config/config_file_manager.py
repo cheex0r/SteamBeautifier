@@ -3,8 +3,8 @@ import json
 import sys
 import tkinter as tk
 
-from config.config_prompt_gui import ConfigPromptGui
 from config.config_prompt_cli import ConfigPromptCli
+from config.config_prompt_gui import ConfigPromptGui
 
 class ConfigFileManager:
     def _get_config_path(self):

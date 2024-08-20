@@ -3,7 +3,6 @@ import os
 import requests
 from datetime import datetime, timedelta, timezone
 
-from config.config_file_manager import ConfigFileManager
 from dropbox.files import WriteMode
 from dropbox.exceptions import AuthError
 

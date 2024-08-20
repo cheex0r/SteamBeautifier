@@ -1,8 +1,8 @@
-from steam_remove_whats_new import remove_whats_new
-from launch_steam import launch_steam
 from config.config_file_manager import ConfigFileManager
-from steam_image_downloader import download_missing_images
 from config.start_on_boot_manager import StartOnBootManager
+from steam.steam_image_downloader import download_missing_images
+from steam.launch_steam import launch_steam
+from steam.steam_remove_whats_new import remove_whats_new
 
 
 def main():

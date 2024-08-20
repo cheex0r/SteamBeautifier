@@ -1,8 +1,5 @@
-import tkinter as tk
-from tkinter import messagebox
 import json
-import os
-import pprint
+import tkinter as tk
 import webbrowser
 
 class ConfigPromptGui:

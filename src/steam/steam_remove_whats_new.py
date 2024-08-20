@@ -1,6 +1,6 @@
 import os
 
-from steam_directory_finder import get_steam_path
+from steam.steam_directory_finder import get_steam_path
 
 
 paths = ['steamui', 'css', 'chunk~2dcc5aaf7.css']

@@ -3,7 +3,7 @@ import platform
 import sys
 import subprocess
 
-from steam_directory_finder import get_steam_path
+from steam.steam_directory_finder import get_steam_path
 
 
 def launch_steam(is_bigpicture=False):
