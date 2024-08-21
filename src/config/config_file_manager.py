@@ -54,6 +54,7 @@ class ConfigFileManager:
         if os.path.exists(config_path):
             with open(config_path, 'r') as f:
                 preferences = json.load(f)
+            print(f"Loaded config file: {config_path}")
         else:
             preferences = None
         
