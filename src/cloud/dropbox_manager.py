@@ -3,6 +3,7 @@ import dropbox
 import hashlib
 import os
 import requests
+import zipfile
 from datetime import datetime, timedelta, timezone
 from tqdm import tqdm
 
@@ -25,6 +26,7 @@ class DropboxManager:
             token_expiry = datetime.strptime(token_expiry, '%Y-%m-%d %H:%M:%S')
             if datetime.now() >= token_expiry:
                 access_token = self._refresh_dropbox_access_token(refresh_token)
+        self.dbx = dropbox.Dropbox(access_token)
         
         return access_token
     
@@ -122,7 +124,103 @@ class DropboxManager:
             print(f"Error listing files in Dropbox folder: {e}")
 
         return file_hashes
+    
 
+    def _download_files_as_zip(self, access_token, dropbox_folder, file_names, local_zip_path):
+        try:
+            dbx = dropbox.Dropbox(access_token)
+            # Construct the list of paths for the specific files you want to download
+            dropbox_paths = [f"{dropbox_folder}/{file_name}" for file_name in file_names]
+
+            print("Downloading Dropbox images.")
+            # Request Dropbox to zip and download the specified files
+            response = dbx.files_download_zip(paths=dropbox_paths)
+
+            # Write the response content to a local file
+            with open(local_zip_path, 'wb') as f:
+                f.write(response.content)
+
+            print(f"Downloaded {len(dropbox_paths)} files as a ZIP to {local_zip_path}")
+
+        except dropbox.exceptions.ApiError as e:
+            print(f"Error downloading files as ZIP: {e}")
+
+    
+    def _copy_files_to_temp_folder(self, dropbox_files, temp_folder_name):
+        import pprint
+        pprint.pprint(dropbox_files)
+        for dropbox_file_path in dropbox_files:
+            # Use the correct variable to extract the basename
+            new_path = f"{temp_folder_name}/{os.path.basename(dropbox_file_path)}"
+            self.dbx.files_copy_v2(dropbox_file_path, new_path)
+        print(f"Copied {len(dropbox_files)} files to temporary folder {temp_folder_name}")
+
+
+    def _download_folder_as_zip(self, temp_folder_name, local_zip_path):
+        try:
+            # Ensure temp_folder_name starts with a '/'
+            if not temp_folder_name.startswith('/'):
+                temp_folder_name = '/' + temp_folder_name
+            
+            print(f"Attempting to download folder: {temp_folder_name}")
+            
+            # Download the temporary folder as a ZIP
+            metadata, response = self.dbx.files_download_zip(path=temp_folder_name)
+
+            # Write the response content to a local file
+            with open(local_zip_path, 'wb') as f:
+                f.write(response.content)
+
+            print(f"Downloaded {temp_folder_name} as a ZIP to {local_zip_path}")
+
+        except dropbox.exceptions.ApiError as e:
+            print(f"Error downloading folder as ZIP: {e}")
+
+
+    def _delete_temp_folder(self, temp_folder_name):
+        try:
+            self.dbx.files_delete_v2(temp_folder_name)
+            print(f"Deleted temporary folder {temp_folder_name} from Dropbox")
+        except dropbox.exceptions.ApiError as e:
+            print(f"Error deleting temporary folder {temp_folder_name}: {e}")
+
+
+    def _unpack_and_overwrite_zip(self, zip_file_path, extract_to_folder):
+        try:
+            with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
+                # Find the common prefix (root directory) in the ZIP file paths
+                common_prefix = os.path.commonprefix([file_info.filename for file_info in zip_ref.infolist()])
+                common_prefix = common_prefix.rstrip('/')  # Remove any trailing slash
+
+                # Extract all the contents of the ZIP file in the specified folder
+                for file_info in zip_ref.infolist():
+                    # Skip directory entries
+                    if file_info.is_dir():
+                        continue
+
+                    # Remove the common prefix from the file path
+                    relative_path = os.path.relpath(file_info.filename, common_prefix)
+                    extracted_path = os.path.join(extract_to_folder, relative_path)
+
+                    # Ensure the directory exists
+                    os.makedirs(os.path.dirname(extracted_path), exist_ok=True)
+
+                    # Remove the existing file if it exists
+                    if os.path.exists(extracted_path):
+                        os.remove(extracted_path)
+
+                    # Extract the file
+                    with zip_ref.open(file_info) as source, open(extracted_path, 'wb') as target:
+                        target.write(source.read())
+                    print(f"Extracted {relative_path} to {extracted_path}")
+
+            # Delete the ZIP file after extraction
+            os.remove(zip_file_path)
+            print(f"Deleted ZIP file: {zip_file_path}")
+
+        except Exception as e:
+            print(f"Error unpacking and overwriting from ZIP: {e}")
+        
 
     def authenticate_dropbox(self, app_key, app_secret):
         self._save_dropbox_app_details(app_key, app_secret)
@@ -162,26 +260,37 @@ class DropboxManager:
         try:
             # Retrieve all file hashes in the Dropbox folder, handling pagination
             dropbox_file_metadata = self._get_all_file_hashes_in_dropbox_folder(dbx, dropbox_folder_path)
+            dropbox_files = []
 
-            def process_file(local_file_name):
-                local_file_path = os.path.join(local_folder, local_file_name)
+            def process_file(dropbox_file_name, dropbox_file_hash):
+                local_file_path = os.path.join(local_folder, dropbox_file_name)
                 if os.path.isfile(local_file_path):
                     local_file_hash = self._calculate_dropbox_content_hash(local_file_path)
-                    
-                    if local_file_name in dropbox_file_metadata:
-                        dropbox_file_hash = dropbox_file_metadata[local_file_name]
 
-                        if local_file_hash != dropbox_file_hash:
-                            self._download_file_from_dropbox(access_token, dropbox_folder_path + '/' + local_file_name, local_file_path)
-                    else:
-                        self._download_file_from_dropbox(access_token, dropbox_folder_path + '/' + local_file_name, local_file_path)
+                    if local_file_hash != dropbox_file_hash:
+                        dropbox_files.append(dropbox_folder_path + '/' + dropbox_file_name)
                 else:
-                    self._download_file_from_dropbox(access_token, dropbox_folder_path + '/' + local_file_name, local_file_path)
+                    dropbox_files.append(dropbox_folder_path + '/' + dropbox_file_name)
 
-            # Use ThreadPoolExecutor to parallelize the downloading process
+            # Loop over files in Dropbox and check against local files
             with concurrent.futures.ThreadPoolExecutor() as executor:
-                list(tqdm(executor.map(process_file, os.listdir(local_folder)), total=len(os.listdir(local_folder)), desc="Downloading files from Dropbox"))
+                list(tqdm(executor.map(lambda item: process_file(item[0], item[1]), dropbox_file_metadata.items()), 
+                        total=len(dropbox_file_metadata), 
+                        desc="Downloading files from Dropbox"))
 
+            temp_folder_name = "/tmp_grid"
+            # Copy files to the temporary Dropbox folder
+            self._copy_files_to_temp_folder(dropbox_files, temp_folder_name)
+
+            # Download the temporary folder as a ZIP
+            local_zip_path = os.path.join(local_folder, "grids.zip")
+            self._download_folder_as_zip(temp_folder_name, local_zip_path)
+
+            # Optionally, delete the temporary Dropbox folder
+            self._delete_temp_folder(temp_folder_name)
+
+            # Unpack the ZIP and overwrite existing files
+            self._unpack_and_overwrite_zip(local_zip_path, local_folder)
         except dropbox.exceptions.ApiError as e:
             print(f"Error during the download and verification process: {e}")
 
