@@ -10,10 +10,8 @@ from steam.steam_remove_whats_new import remove_whats_new
 def main():
     config_file_manager = ConfigFileManager()
     preferences = config_file_manager.load_or_create_preferences()
-    print("Preferences:", preferences)
 
-
-    StartOnBootManager.start_on_boot(preferences['start_on_boot'])
+    StartOnBootManager.start_on_boot(preferences.get('start_on_boot', False))
     steam_id64 = preferences['steam_id']
     local_grid_file_path = get_grid_path_from_steamid64(steam_id64)
     dropbox_file_path = [steam_id64, 'grid']
