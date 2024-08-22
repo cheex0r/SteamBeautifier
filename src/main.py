@@ -35,6 +35,3 @@ def main():
 if __name__ == "__main__":
     main()
 
-
-# No images: Downloading Missing -> Upload DBX
-# Some Images: Download DBX -> Download Missing -> Upload DBX
