@@ -24,15 +24,19 @@ def main():
         launch_steam(preferences['bigpicture'])
     if preferences['dropbox_app_key']:
         dropbox_manager = DropboxManager(config_file_manager)
-        dropbox_manager.upload_newer_files(local_grid_file_path, dropbox_file_path)
+        dropbox_manager.download_newer_files(local_grid_file_path, dropbox_file_path)
     if preferences['download-images']:
         download_missing_images(preferences['steam_api_key'], 
                                 preferences['steamgriddb_api_key'], 
                                 steam_id64)
     if preferences['dropbox_app_key']:
         dropbox_manager = DropboxManager(config_file_manager)
-        dropbox_manager.download_newer_files(local_grid_file_path, dropbox_file_path)
+        dropbox_manager.upload_newer_files(local_grid_file_path, dropbox_file_path)
 
 
 if __name__ == "__main__":
     main()
+
+
+# No images: Downloading Missing -> Upload DBX
+# Some Images: Download DBX -> Download Missing -> Upload DBX
