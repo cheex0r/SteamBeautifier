@@ -202,3 +202,4 @@ cython_debug/
 
 # SteamBeautifier Config
 config.json
+games_with_vertical_grids.json
