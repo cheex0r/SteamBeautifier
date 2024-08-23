@@ -73,11 +73,14 @@ class DropboxManager:
         self.config_manager._save_preferences(preferences)
 
 
-    def _upload_file_to_dropbox(self, access_token, local_file_path, dropbox_folder):
+    def _upload_file_to_dropbox(self, access_token, local_file_path, dropbox_folder, new_filename=None):
         dbx = dropbox.Dropbox(access_token)
+        if new_filename is None:
+            new_filename = os.path.basename(local_file_path)
+        dropbox_file_path = f"{dropbox_folder}/{new_filename}"
+        
         with open(local_file_path, 'rb') as f:
-            dropbox_file_path = f"{dropbox_folder}/{os.path.basename(local_file_path)}"
-            dbx.files_upload(f.read(), dropbox_file_path, mode=WriteMode('overwrite'))
+            dbx.files_upload(f.read(), dropbox_file_path, mode=dropbox.files.WriteMode('overwrite'))
 
 
     def _download_file_from_dropbox(self, access_token, dropbox_path, local_path):
@@ -210,21 +213,22 @@ class DropboxManager:
 
             def process_file(local_file_name):
                 game_id, postfix = self._extract_gameid_from_filename(local_file_name)
-                dbx_path = dbx_folder_path
                 local_file_path = os.path.join(local_folder, local_file_name)
+                dbx_path = dbx_folder_path
+                dbx_new_filename = None
                 if game_id in non_steam_games:
                     dbx_path = dbx_folder_path_non_steam
-                    local_file_name = f"{{{non_steam_games[game_id]['AppName']}}}{postfix}"
+                    dbx_new_filename = f"{{{non_steam_games[game_id]['AppName']}}}{postfix}"
                 if os.path.isfile(local_file_path):
                     local_file_hash = self._calculate_dropbox_content_hash(local_file_path)
                     if local_file_name in dropbox_file_hashes:
                         dropbox_file_hash = dropbox_file_hashes[local_file_name]
                         if local_file_hash != dropbox_file_hash:
                             num_uploaded[0] += 1
-                            self._upload_file_to_dropbox(access_token, local_file_path, dbx_path)
+                            self._upload_file_to_dropbox(access_token, local_file_path, dbx_path, dbx_new_filename)
                     else:
                         num_uploaded[0] += 1
-                        self._upload_file_to_dropbox(access_token, local_file_path, dbx_path)
+                        self._upload_file_to_dropbox(access_token, local_file_path, dbx_path, dbx_new_filename)
             
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 list(tqdm(executor.map(process_file, files), total=total_files, desc="Uploading files to Dropbox"))
