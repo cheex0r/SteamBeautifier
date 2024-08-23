@@ -129,13 +129,28 @@ class DropboxManager:
         return file_hashes
     
 
+    def _hash_game_name(self, game_name):
+        return hashlib.sha256(game_name.encode('utf-8')).hexdigest()
+
+
+    def _generate_hashed_filename(self, game_name, postfix):
+        hashed_name = self._hash_game_name(game_name)
+        separator = "-"
+        return f"{hashed_name}{separator}{postfix}"
+
+
     def _extract_gameid_from_filename(self, filepath):
         filename_with_extension = os.path.basename(filepath)
         filename, extension = os.path.splitext(filename_with_extension)
-        filename = filename.split('_')[0]
-        filename = filename.rstrip('p')
-        postfix = filename_with_extension[len(filename):]
-        return filename, postfix
+        
+        if '-' in filename:
+            hashed_part, postfix = filename.split('-', 1)
+            return hashed_part, f"-{postfix}{extension}"
+        else:
+            filename = filename.split('_')[0]
+            filename = filename.rstrip('p')
+            postfix = filename_with_extension[len(filename):]
+            return filename, postfix
 
 
     def authenticate_dropbox(self, app_key, app_secret):
@@ -211,7 +226,7 @@ class DropboxManager:
             os.makedirs(local_folder)
 
         # Rekey the non-Steam games dictionary to use the name as the key
-        non_steam_games = {game['AppName']: game for game in non_steam_games.values()}
+        non_steam_games = {self._hash_game_name(game['AppName']): game for game in non_steam_games.values()}
 
         self._download_newer_files_for_category(access_token, local_folder, dropbox_folder_path, non_steam_games, is_steam=True)
         self._download_newer_files_for_category(access_token, local_folder, dropbox_folder_path_non_steam, non_steam_games, is_steam=False)
@@ -230,7 +245,8 @@ class DropboxManager:
                 local_file_path = os.path.join(local_folder, local_file_name)
                 dbx_filename = local_file_name
                 if game_id in non_steam_games:
-                    dbx_filename = f"{{{non_steam_games[game_id]['AppName']}}}{postfix}"
+                    hash_game_name = self._hash_game_name(non_steam_games[game_id]['AppName'])
+                    dbx_filename = f"{hash_game_name}{postfix}"
                 
                 if os.path.isfile(local_file_path):
                     local_file_hash = self._calculate_dropbox_content_hash(local_file_path)
@@ -272,7 +288,7 @@ class DropboxManager:
             game_id, postfix = self._extract_gameid_from_filename(file)
             if game_id in non_steam_games:
                 non_steam_app_files.append(file)
-            else:
+            elif len(game_id) < 10: # Skip stale images to old shortcuts
                 steam_app_files.append(file)
 
         self._upload_newer_files(access_token, local_folder, steam_app_files, dbx_folder_path)
