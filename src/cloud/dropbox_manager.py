@@ -8,6 +8,7 @@ from tqdm import tqdm
 
 from dropbox.files import WriteMode
 from dropbox.exceptions import AuthError
+from cloud.constants import DROPBOX_GRID_DIRECTORY, DROPBOX_GRID_DIRECTORY_NON_STEAM
 
 
 class DropboxManager:
@@ -122,6 +123,15 @@ class DropboxManager:
             print(f"Error listing files in Dropbox folder: {e}")
 
         return file_hashes
+    
+
+    def _extract_gameid_from_filename(self, filepath):
+        filename_with_extension = os.path.basename(filepath)
+        filename, extension = os.path.splitext(filename_with_extension)
+        filename = filename.split('_')[0]
+        filename = filename.rstrip('p')
+        postfix = filename_with_extension[len(filename):]
+        return filename, postfix
 
 
     def authenticate_dropbox(self, app_key, app_secret):
@@ -146,8 +156,8 @@ class DropboxManager:
             print(f"An unexpected error occurred: {e}")
 
 
-    def download_newer_files(self, local_folder, dropbox_folder_list):
-        dropbox_folder_path = '/' + '/'.join(dropbox_folder_list)
+    def download_newer_files(self, local_folder, steam_id):
+        dropbox_folder_path = DROPBOX_GRID_DIRECTORY.format(user_id=steam_id)
         access_token = self._get_dropbox_access_token()
         if not access_token:
             print("Dropbox access token not found. Please authenticate first.")
@@ -163,56 +173,63 @@ class DropboxManager:
             # Retrieve all file hashes in the Dropbox folder, handling pagination
             dropbox_file_metadata = self._get_all_file_hashes_in_dropbox_folder(dbx, dropbox_folder_path)
 
-            def process_file(local_file_name):
-                local_file_path = os.path.join(local_folder, local_file_name)
+            def process_file(dropbox_file_name, dropbox_file_hash):
+                local_file_path = os.path.join(local_folder, dropbox_file_name)
                 if os.path.isfile(local_file_path):
                     local_file_hash = self._calculate_dropbox_content_hash(local_file_path)
-                    
-                    if local_file_name in dropbox_file_metadata:
-                        dropbox_file_hash = dropbox_file_metadata[local_file_name]
-
-                        if local_file_hash != dropbox_file_hash:
-                            self._download_file_from_dropbox(access_token, dropbox_folder_path + '/' + local_file_name, local_file_path)
-                    else:
-                        self._download_file_from_dropbox(access_token, dropbox_folder_path + '/' + local_file_name, local_file_path)
+                    if local_file_hash != dropbox_file_hash:
+                        self._download_file_from_dropbox(access_token, dropbox_folder_path + '/' + dropbox_file_name, local_file_path)
                 else:
-                    self._download_file_from_dropbox(access_token, dropbox_folder_path + '/' + local_file_name, local_file_path)
+                    self._download_file_from_dropbox(access_token, dropbox_folder_path + '/' + dropbox_file_name, local_file_path)
 
-            # Use ThreadPoolExecutor to parallelize the downloading process
             with concurrent.futures.ThreadPoolExecutor() as executor:
-                list(tqdm(executor.map(process_file, os.listdir(local_folder)), total=len(os.listdir(local_folder)), desc="Downloading files from Dropbox"))
+                list(tqdm(executor.map(lambda item: process_file(item[0], item[1]), dropbox_file_metadata.items()), total=len(dropbox_file_metadata), desc="Downloading files from Dropbox"))
 
         except dropbox.exceptions.ApiError as e:
             print(f"Error during the download and verification process: {e}")
 
 
-    def upload_newer_files(self, local_folder, dropbox_folder_list):
-        dropbox_folder_path = '/' + '/'.join(dropbox_folder_list)
+    def upload_newer_files(self, local_folder, steam_id, non_steam_games={}):
+        dbx_folder_path = DROPBOX_GRID_DIRECTORY.format(user_id=steam_id)
+        dbx_folder_path_non_steam = DROPBOX_GRID_DIRECTORY_NON_STEAM.format(user_id=steam_id)
         access_token = self._get_dropbox_access_token()
         if not access_token:
             print("Dropbox access token not found. Please authenticate first.")
             return
 
         dbx = dropbox.Dropbox(access_token)
+        files = os.listdir(local_folder)
+        total_files = len(files)
+        num_uploaded = [0]
+
+        print(f"Non-Steam Games: {non_steam_games['2856386330']}")
 
         try:
             # Retrieve all file hashes in the Dropbox folder, handling pagination
-            dropbox_file_hashes = self._get_all_file_hashes_in_dropbox_folder(dbx, dropbox_folder_path)
+            dropbox_file_hashes = self._get_all_file_hashes_in_dropbox_folder(dbx, dbx_folder_path)
 
             def process_file(local_file_name):
+                game_id, postfix = self._extract_gameid_from_filename(local_file_name)
+                dbx_path = dbx_folder_path
                 local_file_path = os.path.join(local_folder, local_file_name)
+                if game_id in non_steam_games:
+                    dbx_path = dbx_folder_path_non_steam
+                    local_file_name = f"{{{non_steam_games[game_id]['AppName']}}}{postfix}"
                 if os.path.isfile(local_file_path):
                     local_file_hash = self._calculate_dropbox_content_hash(local_file_path)
                     if local_file_name in dropbox_file_hashes:
                         dropbox_file_hash = dropbox_file_hashes[local_file_name]
                         if local_file_hash != dropbox_file_hash:
-                            self._upload_file_to_dropbox(access_token, local_file_path, dropbox_folder_path)
+                            num_uploaded[0] += 1
+                            self._upload_file_to_dropbox(access_token, local_file_path, dbx_path)
                     else:
-                        self._upload_file_to_dropbox(access_token, local_file_path, dropbox_folder_path)
-
-            # Use ThreadPoolExecutor to parallelize the processing
+                        num_uploaded[0] += 1
+                        self._upload_file_to_dropbox(access_token, local_file_path, dbx_path)
+            
             with concurrent.futures.ThreadPoolExecutor() as executor:
-                list(tqdm(executor.map(process_file, os.listdir(local_folder)), total=len(os.listdir(local_folder)), desc="Uploading files to Dropbox"))
+                list(tqdm(executor.map(process_file, files), total=total_files, desc="Uploading files to Dropbox"))
+            print(f"Uploaded {num_uploaded[0]} files to Dropbox")
+
 
         except dropbox.exceptions.ApiError as e:
             print(f"Error during the upload and verification process: {e}")
