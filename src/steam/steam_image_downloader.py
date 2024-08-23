@@ -13,16 +13,17 @@ from data.app_data import AppData
 from downloader.image_downloader import save_image_as_png
 from steam.steam_directory_finder import (
     get_steam_path,
-    get_grid_path_from_steamid64
+    get_grid_path
 )
+from steam.steam_id import SteamId
 
 
 CACHE_FILE_NAME = 'games_with_vertical_grids.json'
 
-def download_missing_images(steam_api_key, steamgriddb_api_key, steam_id64, skip_if_exists=True):
-    owned_games = get_owned_games(steam_api_key, steam_id64)
+def download_missing_images(steam_api_key, steamgriddb_api_key, steam_id: SteamId, skip_if_exists=True):
+    owned_games = get_owned_games(steam_api_key, steam_id.get_steamid64())
     steam_path = get_steam_path()
-    grid_path = get_grid_path_from_steamid64(steam_id64)
+    grid_path = get_grid_path(steam_id.get_steamid64())
     steam_grid_path = os.path.join(steam_path, grid_path)
     existing_grid_images = get_appids_with_custom_images(steam_grid_path)
     steam_games_with_vertical_grid_images = get_steam_games_with_vertical_grids()
@@ -119,11 +120,12 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    steam_id = SteamId(steamid64=args.steam_id64)
 
     skip_if_exists=False
     if args.skip_if_exists is not None:
         skip_if_exists=True
     if args.steam_api_key is not None:
-        download_missing_images(args.steam_api_key, args.steamgriddb_api_key, args.steam_id64, args.skip_if_exists)
+        download_missing_images(args.steam_api_key, args.steamgriddb_api_key, steam_id, args.skip_if_exists)
     if args.steam_app_id is not None:
-        download_missing_images_for_game(args.steamgriddb_api_key, args.steam_id64, args.steam_app_id, args.skip_if_exists)
+        download_missing_images_for_game(args.steamgriddb_api_key, steam_id, args.steam_app_id, args.skip_if_exists)

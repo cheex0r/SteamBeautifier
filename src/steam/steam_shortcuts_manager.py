@@ -3,6 +3,7 @@ import vdf
 import zlib
 
 from steam.constants import SHORTCUTS_VDF_PATH
+from steam.steam_id import SteamId
 
 def _generate_non_steam_game_appid(exe_path, app_name):
     combined_string = f"{exe_path}{app_name}"
@@ -29,12 +30,12 @@ def _generate_non_steam_game_appid(exe_path, app_name):
     return str(appid), str(appid_old)
 
 
-def get_shortcuts_vdf_path_from_steamid(steam_dir, steam_id):
-    return os.path.join(steam_dir, SHORTCUTS_VDF_PATH.format(user_id=steam_id))
+def get_shortcuts_vdf_path_from_steamid(steam_dir, steam_id: SteamId):
+    return os.path.join(steam_dir, SHORTCUTS_VDF_PATH.format(user_id=steam_id.get_steamid()))
 
 
-def parse_shortcuts_vdf(steam_dir, user_id):
-    file_path = get_shortcuts_vdf_path_from_steamid(steam_dir, user_id)
+def parse_shortcuts_vdf(steam_dir, steam_id: SteamId):
+    file_path = get_shortcuts_vdf_path_from_steamid(steam_dir, steam_id)
     apps_info = {}
     
     with open(file_path, 'rb') as f:

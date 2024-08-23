@@ -9,6 +9,7 @@ from tqdm import tqdm
 from dropbox.files import WriteMode
 from dropbox.exceptions import AuthError
 from cloud.constants import DROPBOX_GRID_DIRECTORY, DROPBOX_GRID_DIRECTORY_NON_STEAM
+from steam.steam_id import SteamId
 
 
 class DropboxManager:
@@ -195,14 +196,14 @@ class DropboxManager:
             print(f"Error during the download and verification process: {e}")
 
 
-    def download_newer_files(self, local_folder, steam_id, non_steam_games={}):
+    def download_newer_files(self, local_folder, steam_id: SteamId, non_steam_games={}):
         access_token = self._get_dropbox_access_token()
         if not access_token:
             print("Dropbox access token not found. Please authenticate first.")
             return
         
-        dropbox_folder_path = DROPBOX_GRID_DIRECTORY.format(user_id=steam_id)
-        dropbox_folder_path_non_steam = DROPBOX_GRID_DIRECTORY_NON_STEAM.format(user_id=steam_id)
+        dropbox_folder_path = DROPBOX_GRID_DIRECTORY.format(user_id=steam_id.get_steamid())
+        dropbox_folder_path_non_steam = DROPBOX_GRID_DIRECTORY_NON_STEAM.format(user_id=steam_id.get_steamid())
 
         if not os.path.exists(local_folder):
             os.makedirs(local_folder)
@@ -250,14 +251,14 @@ class DropboxManager:
             print(f"Error during the upload and verification process: {e}")
 
 
-    def upload_newer_files(self, local_folder, steam_id, non_steam_games={}):
+    def upload_newer_files(self, local_folder, steam_id: SteamId, non_steam_games={}):
         access_token = self._get_dropbox_access_token()
         if not access_token:
             print("Dropbox access token not found. Please authenticate first.")
             return
         
-        dbx_folder_path = DROPBOX_GRID_DIRECTORY.format(user_id=steam_id)
-        dbx_folder_path_non_steam = DROPBOX_GRID_DIRECTORY_NON_STEAM.format(user_id=steam_id)
+        dbx_folder_path = DROPBOX_GRID_DIRECTORY.format(user_id=steam_id.get_steamid())
+        dbx_folder_path_non_steam = DROPBOX_GRID_DIRECTORY_NON_STEAM.format(user_id=steam_id.get_steamid())
 
         steam_app_files = []
         non_steam_app_files = []

@@ -1,7 +1,7 @@
 import os
 import sys
 
-from steam.steam_ids import steamid64_to_steamid
+from steam.steam_id import SteamId
 
 
 def get_steam_path():
@@ -47,10 +47,9 @@ def find_steam_path_unix():
     return None
 
 
-def get_grid_path_from_steamid64(steam_id64):
-    steamid = steamid64_to_steamid(steam_id64)
+def get_grid_path(steam_id: SteamId):
     steam_path = get_steam_path()
-    grid_path = ['userdata', str(steamid), 'config', 'grid']
+    grid_path = ['userdata', steam_id.get_steamid(), 'config', 'grid']
     return os.path.join(steam_path, *grid_path)
 
 
