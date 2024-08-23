@@ -181,9 +181,11 @@ class DropboxManager:
                 if os.path.isfile(local_file_path):
                     local_file_hash = self._calculate_dropbox_content_hash(local_file_path)
                     if local_file_hash != dropbox_file_hash:
+                        tqdm.write(f"Downloading from Dropbox {dropbox_folder_path}/{dropbox_file_name} to {local_file_path}")
                         self._download_file_from_dropbox(access_token, dropbox_folder_path + '/' + dropbox_file_name, local_file_path)
                         return 1
                 else:
+                    tqdm.write(f"Downloading from Dropbox {dropbox_folder_path}/{dropbox_file_name} to {local_file_path}")
                     self._download_file_from_dropbox(access_token, dropbox_folder_path + '/' + dropbox_file_name, local_file_path)
                     return 1
                 return 0
@@ -235,9 +237,11 @@ class DropboxManager:
                     if dbx_filename in dropbox_file_hashes:
                         dropbox_file_hash = dropbox_file_hashes[dbx_filename]
                         if local_file_hash != dropbox_file_hash:
+                            tqdm.write(f"Uploading {local_file_path} to Dropbox {dbx_folder}/{dbx_filename}")
                             self._upload_file_to_dropbox(access_token, local_file_path, dbx_folder, dbx_filename)
                             return 1
                     else:
+                        tqdm.write(f"Uploading {local_file_path} to Dropbox {dbx_folder}/{dbx_filename}")
                         self._upload_file_to_dropbox(access_token, local_file_path, dbx_folder, dbx_filename)
                         return 1
                 return 0
