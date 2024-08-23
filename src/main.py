@@ -1,6 +1,6 @@
 from cloud.dropbox_manager import DropboxManager
 from config.config_file_manager import ConfigFileManager
-from config.start_on_boot_manager import StartOnBootManager
+from config.start_on_boot_manager import start_on_boot
 from steam.steam_directory_finder import get_grid_path
 from steam.steam_image_downloader import download_missing_images
 from steam.launch_steam import launch_steam
@@ -14,7 +14,6 @@ def main():
     config_file_manager = ConfigFileManager()
     preferences = config_file_manager.load_or_create_preferences()
 
-    StartOnBootManager.start_on_boot(preferences.get('start_on_boot', False))
     steam_id64 = preferences['steam_id']
     steam_id = SteamId(steamid64=steam_id64)
 
@@ -22,6 +21,7 @@ def main():
     steam_path = get_steam_path()
     non_steam_games = parse_shortcuts_vdf(steam_path, steam_id)
     
+    start_on_boot(preferences.get('start_on_boot', False))
     if preferences['remove_whats_new']:
         remove_whats_new()
 
