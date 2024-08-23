@@ -27,7 +27,7 @@ class SteamId:
         return steamid64
 
     def _steamid64_to_steamid3(self, steamid64):
-        steamid = self._steamid64_to_steamid(self, steamid64)
+        steamid = self._steamid64_to_steamid(steamid64)
         steamid3 = "[U:1:" + str(steamid) + "]"
         return steamid3
 

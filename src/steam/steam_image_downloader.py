@@ -21,9 +21,9 @@ from steam.steam_id import SteamId
 CACHE_FILE_NAME = 'games_with_vertical_grids.json'
 
 def download_missing_images(steam_api_key, steamgriddb_api_key, steam_id: SteamId, skip_if_exists=True):
-    owned_games = get_owned_games(steam_api_key, steam_id.get_steamid64())
+    owned_games = get_owned_games(steam_api_key, steam_id)
     steam_path = get_steam_path()
-    grid_path = get_grid_path(steam_id.get_steamid64())
+    grid_path = get_grid_path(steam_id)
     steam_grid_path = os.path.join(steam_path, grid_path)
     existing_grid_images = get_appids_with_custom_images(steam_grid_path)
     steam_games_with_vertical_grid_images = get_steam_games_with_vertical_grids()
