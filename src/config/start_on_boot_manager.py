@@ -6,7 +6,7 @@ if platform.system() == "Windows":
 
 class StartOnBootManager:
     @staticmethod
-    def start_on_boot(start_on_boot=True):
+    def start_on_boot(self, start_on_boot=True):
         if platform.system() == "Windows":
             # Get the path to the startup folder
             startup_path = os.path.join(os.getenv('APPDATA'), 'Microsoft\\Windows\\Start Menu\\Programs\\Startup')
