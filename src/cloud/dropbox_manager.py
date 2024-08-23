@@ -192,49 +192,62 @@ class DropboxManager:
             print(f"Error during the download and verification process: {e}")
 
 
-    def upload_newer_files(self, local_folder, steam_id, non_steam_games={}):
-        dbx_folder_path = DROPBOX_GRID_DIRECTORY.format(user_id=steam_id)
-        dbx_folder_path_non_steam = DROPBOX_GRID_DIRECTORY_NON_STEAM.format(user_id=steam_id)
-        access_token = self._get_dropbox_access_token()
-        if not access_token:
-            print("Dropbox access token not found. Please authenticate first.")
-            return
-
+    def _upload_newer_files(self, access_token, local_folder, files, dbx_folder, non_steam_games={}):
         dbx = dropbox.Dropbox(access_token)
-        files = os.listdir(local_folder)
         total_files = len(files)
-        num_uploaded = [0]
-
-        print(f"Non-Steam Games: {non_steam_games['2856386330']}")
+        num_uploaded = 0
 
         try:
             # Retrieve all file hashes in the Dropbox folder, handling pagination
-            dropbox_file_hashes = self._get_all_file_hashes_in_dropbox_folder(dbx, dbx_folder_path)
+            dropbox_file_hashes = self._get_all_file_hashes_in_dropbox_folder(dbx, dbx_folder)
 
             def process_file(local_file_name):
                 game_id, postfix = self._extract_gameid_from_filename(local_file_name)
                 local_file_path = os.path.join(local_folder, local_file_name)
-                dbx_path = dbx_folder_path
-                dbx_new_filename = None
+                dbx_filename = local_file_name
                 if game_id in non_steam_games:
-                    dbx_path = dbx_folder_path_non_steam
-                    dbx_new_filename = f"{{{non_steam_games[game_id]['AppName']}}}{postfix}"
+                    dbx_filename = f"{{{non_steam_games[game_id]['AppName']}}}{postfix}"
+                
                 if os.path.isfile(local_file_path):
                     local_file_hash = self._calculate_dropbox_content_hash(local_file_path)
-                    if local_file_name in dropbox_file_hashes:
-                        dropbox_file_hash = dropbox_file_hashes[local_file_name]
+                    if dbx_filename in dropbox_file_hashes:
+                        dropbox_file_hash = dropbox_file_hashes[dbx_filename]
                         if local_file_hash != dropbox_file_hash:
-                            num_uploaded[0] += 1
-                            self._upload_file_to_dropbox(access_token, local_file_path, dbx_path, dbx_new_filename)
+                            self._upload_file_to_dropbox(access_token, local_file_path, dbx_folder, dbx_filename)
+                            return 1
                     else:
-                        num_uploaded[0] += 1
-                        self._upload_file_to_dropbox(access_token, local_file_path, dbx_path, dbx_new_filename)
+                        self._upload_file_to_dropbox(access_token, local_file_path, dbx_folder, dbx_filename)
+                        return 1
+                return 0
             
             with concurrent.futures.ThreadPoolExecutor() as executor:
-                list(tqdm(executor.map(process_file, files), total=total_files, desc="Uploading files to Dropbox"))
-            print(f"Uploaded {num_uploaded[0]} files to Dropbox")
+                num_uploaded = sum(tqdm(executor.map(process_file, files), total=total_files, desc="Uploading files to Dropbox"))
+            print(f"Uploaded {num_uploaded} files to Dropbox")
 
 
         except dropbox.exceptions.ApiError as e:
             print(f"Error during the upload and verification process: {e}")
 
+
+    def upload_newer_files(self, local_folder, steam_id, non_steam_games={}):
+        access_token = self._get_dropbox_access_token()
+        if not access_token:
+            print("Dropbox access token not found. Please authenticate first.")
+            return
+        
+        dbx_folder_path = DROPBOX_GRID_DIRECTORY.format(user_id=steam_id)
+        dbx_folder_path_non_steam = DROPBOX_GRID_DIRECTORY_NON_STEAM.format(user_id=steam_id)
+
+        steam_app_files = []
+        non_steam_app_files = []
+
+        files = os.listdir(local_folder)
+        for file in files:
+            game_id, postfix = self._extract_gameid_from_filename(file)
+            if game_id in non_steam_games:
+                non_steam_app_files.append(file)
+            else:
+                steam_app_files.append(file)
+
+        self._upload_newer_files(access_token, local_folder, steam_app_files, dbx_folder_path)
+        self._upload_newer_files(access_token, local_folder, non_steam_app_files, dbx_folder_path_non_steam, non_steam_games)
