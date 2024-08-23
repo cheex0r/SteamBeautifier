@@ -54,7 +54,8 @@ def parse_shortcuts_vdf(steam_dir, user_id):
             'ShortcutPath': app_data.get('ShortcutPath', ''),
             'Icon': app_data.get('icon', ''),
             'Tags': app_data.get('tags', []),
-            'AppId': str(app_id)
+            'AppId': str(app_id),
+            'GridImageId': grid_image_id
         }
         apps_info[grid_image_id] = app_info
     

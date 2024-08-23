@@ -159,43 +159,64 @@ class DropboxManager:
             print(f"An unexpected error occurred: {e}")
 
 
-    def download_newer_files(self, local_folder, steam_id):
-        dropbox_folder_path = DROPBOX_GRID_DIRECTORY.format(user_id=steam_id)
-        access_token = self._get_dropbox_access_token()
-        if not access_token:
-            print("Dropbox access token not found. Please authenticate first.")
-            return
-
+    def _download_newer_files_for_category(self, access_token, local_folder, dropbox_folder_path, non_steam_games, is_steam):       
         dbx = dropbox.Dropbox(access_token)
 
-        # Ensure the local folder exists
-        if not os.path.exists(local_folder):
-            os.makedirs(local_folder)
-
         try:
-            # Retrieve all file hashes in the Dropbox folder, handling pagination
+            # Retrieve all file metadata in the Dropbox folder, handling pagination
             dropbox_file_metadata = self._get_all_file_hashes_in_dropbox_folder(dbx, dropbox_folder_path)
-
             def process_file(dropbox_file_name, dropbox_file_hash):
-                local_file_path = os.path.join(local_folder, dropbox_file_name)
+                game_name, postfix = self._extract_gameid_from_filename(dropbox_file_name)
+                clean_game_name = game_name.strip('{}')
+                local_file_name = dropbox_file_name
+
+                if not is_steam:
+                    if clean_game_name not in non_steam_games:
+                        return  0
+                    local_file_name = f"{non_steam_games[clean_game_name]['GridImageId']}{postfix}"
+
+                local_file_path = os.path.join(local_folder, local_file_name)
+
                 if os.path.isfile(local_file_path):
                     local_file_hash = self._calculate_dropbox_content_hash(local_file_path)
                     if local_file_hash != dropbox_file_hash:
                         self._download_file_from_dropbox(access_token, dropbox_folder_path + '/' + dropbox_file_name, local_file_path)
+                        return 1
                 else:
                     self._download_file_from_dropbox(access_token, dropbox_folder_path + '/' + dropbox_file_name, local_file_path)
+                    return 1
+                return 0
 
             with concurrent.futures.ThreadPoolExecutor() as executor:
-                list(tqdm(executor.map(lambda item: process_file(item[0], item[1]), dropbox_file_metadata.items()), total=len(dropbox_file_metadata), desc="Downloading files from Dropbox"))
+                num_downloads = sum(tqdm(executor.map(lambda item: process_file(item[0], item[1]), dropbox_file_metadata.items()), total=len(dropbox_file_metadata), desc="Downloading files from Dropbox"))
+            print(f"Downloaded {num_downloads} files from Dropbox")
 
         except dropbox.exceptions.ApiError as e:
             print(f"Error during the download and verification process: {e}")
 
 
+    def download_newer_files(self, local_folder, steam_id, non_steam_games={}):
+        access_token = self._get_dropbox_access_token()
+        if not access_token:
+            print("Dropbox access token not found. Please authenticate first.")
+            return
+        
+        dropbox_folder_path = DROPBOX_GRID_DIRECTORY.format(user_id=steam_id)
+        dropbox_folder_path_non_steam = DROPBOX_GRID_DIRECTORY_NON_STEAM.format(user_id=steam_id)
+
+        if not os.path.exists(local_folder):
+            os.makedirs(local_folder)
+
+        # Rekey the non-Steam games dictionary to use the name as the key
+        non_steam_games = {game['AppName']: game for game in non_steam_games.values()}
+
+        self._download_newer_files_for_category(access_token, local_folder, dropbox_folder_path, non_steam_games, is_steam=True)
+        self._download_newer_files_for_category(access_token, local_folder, dropbox_folder_path_non_steam, non_steam_games, is_steam=False)
+
+
     def _upload_newer_files(self, access_token, local_folder, files, dbx_folder, non_steam_games={}):
         dbx = dropbox.Dropbox(access_token)
         total_files = len(files)
-        num_uploaded = 0
 
         try:
             # Retrieve all file hashes in the Dropbox folder, handling pagination
