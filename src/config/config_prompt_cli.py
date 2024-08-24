@@ -13,10 +13,13 @@ class ConfigPromptCli:
             if 'url' in config:
                 print(f"You can get your {config['description']} here: {config['url']}")
             return input(f"{config['description']}: ")
-        
+
+
     def get_user_preferences(self, schema):
         preferences = {}
         for key, config in schema.items():
+            if config.get('skip_cli', False):
+                continue
             if 'depends_on' in config and not preferences.get(config['depends_on']):
                 preferences[key] = config['default']
             else:
@@ -47,6 +50,7 @@ def main():
     config_prompt = ConfigPromptCli()
     prefs = config_prompt.get_user_preferences(schema)
     print(prefs)
+
 
 if __name__ == "__main__":
     main()
