@@ -13,7 +13,7 @@ from steam.steam_id import SteamId
 
 
 class DropboxManager:
-    def __init__(self, config_manager):
+    def __init__(self, config_manager=None):
         self.config_manager = config_manager
 
 
@@ -63,8 +63,16 @@ class DropboxManager:
         preferences = self.config_manager._load_preferences() or {}
         preferences['dropbox_access_token'] = access_token
         preferences['dropbox_refresh_token'] = refresh_token
-        preferences['dropbox_token_expiry'] = (datetime.now() + timedelta(seconds=expires_in)).strftime('%Y-%m-%d %H:%M:%S')
+        preferences['dropbox_token_expiry'] = self.get_token_expiry_now(expires_in)
         self.config_manager._save_preferences(preferences)
+
+
+    def get_token_expiry_now(self, expires_in=14400):
+        return self.get_token_expiry(datetime.now(), expires_in)
+
+
+    def get_token_expiry(self, time, expires_in=14400):
+        return (time + timedelta(seconds=expires_in)).strftime('%Y-%m-%d %H:%M:%S')
 
 
     def _save_dropbox_app_details(self, app_key, app_secret):
@@ -153,8 +161,10 @@ class DropboxManager:
             return filename, postfix
 
 
-    def authenticate_dropbox(self, app_key, app_secret):
-        self._save_dropbox_app_details(app_key, app_secret)
+    def get_authorization_token_from_user_cli(self, app_key, app_secret, retries=3):
+        if retries == 0:
+            print("Failed to authenticate after 3 attempts.")
+            return None
         auth_flow = dropbox.DropboxOAuth2FlowNoRedirect(app_key, app_secret, token_access_type='offline')
         authorize_url = auth_flow.start()
         print("1. Go to: " + authorize_url)
@@ -164,8 +174,7 @@ class DropboxManager:
         
         try:
             oauth_result = auth_flow.finish(auth_code)
-            print(oauth_result)
-            self._save_dropbox_access_token(oauth_result.access_token, oauth_result.refresh_token)
+            return oauth_result
         except AuthError as e:
             print(f"Error during authentication: {e}")
         except requests.exceptions.HTTPError as e:
@@ -173,7 +182,14 @@ class DropboxManager:
             print(f"Response content: {e.response.text}")
         except Exception as e:
             print(f"An unexpected error occurred: {e}")
+        return self.get_authorization_token_from_user_cli(app_key, app_secret, retries-1)
 
+
+    def authenticate_dropbox(self, app_key, app_secret):
+        self._save_dropbox_app_details(app_key, app_secret)
+        oauth_result = self.get_authorization_token_from_user_cli(app_key, app_secret)
+        self._save_dropbox_access_token(oauth_result.access_token, oauth_result.refresh_token)
+        
 
     def _download_newer_files_for_category(self, access_token, local_folder, dropbox_folder_path, non_steam_games, is_steam):       
         dbx = dropbox.Dropbox(access_token)

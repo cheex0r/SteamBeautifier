@@ -1,5 +1,7 @@
 import json
 
+from cloud.dropbox_manager import DropboxManager
+
 
 class ConfigPromptCli:
     def prompt_user(self, config):
@@ -18,7 +20,17 @@ class ConfigPromptCli:
             if 'depends_on' in config and not preferences.get(config['depends_on']):
                 preferences[key] = config['default']
             else:
-                preferences[key] = self.prompt_user(config)
+                # Generate Dropbox URL dynamically based on previous inputs
+                if key == 'dropbox_authorization_token':
+                    app_key = preferences.get('dropbox_app_key')
+                    app_secret = preferences.get('dropbox_app_secret')
+                    dropbox_manager = DropboxManager()
+                    oauth_result = dropbox_manager.get_authorization_token_from_user_cli(app_key, app_secret)
+                    preferences['dropbox_access_token'] = oauth_result.access_token
+                    preferences['dropbox_refresh_token'] = oauth_result.refresh_token
+                    preferences['dropbox_token_expiry'] = dropbox_manager.get_token_expiry_now()
+                else:
+                    preferences[key] = self.prompt_user(config)
 
         return preferences
 
