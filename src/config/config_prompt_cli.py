@@ -1,6 +1,7 @@
 import json
 
 from cloud.dropbox_manager import DropboxManager
+from interfaces.cli_user_interaction import CLIUserInteraction
 
 
 class ConfigPromptCli:
@@ -29,10 +30,14 @@ class ConfigPromptCli:
         app_secret = preferences.get('dropbox_app_secret', None)
         if app_key and app_secret:
             dropbox_manager = DropboxManager()
-            oauth_result = dropbox_manager.get_authorization_token_from_user_cli(app_key, app_secret)
-            preferences['dropbox_access_token'] = oauth_result.access_token
-            preferences['dropbox_refresh_token'] = oauth_result.refresh_token
-            preferences['dropbox_token_expiry'] = dropbox_manager.get_token_expiry_now()
+            try:
+                oauth_result = dropbox_manager.get_authorization_token_from_user(app_key, app_secret, CLIUserInteraction())
+                preferences['dropbox_access_token'] = oauth_result.access_token
+                preferences['dropbox_refresh_token'] = oauth_result.refresh_token
+                preferences['dropbox_token_expiry'] = dropbox_manager.get_token_expiry_now()
+                print("Dropbox authentication successful.")
+            except Exception as e:
+                print(f"Error getting Dropbox tokens: {e}")
 
 
 def main():

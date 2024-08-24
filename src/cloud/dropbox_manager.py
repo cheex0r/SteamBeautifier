@@ -8,7 +8,9 @@ from tqdm import tqdm
 
 from dropbox.files import WriteMode
 from dropbox.exceptions import AuthError
+
 from cloud.constants import DROPBOX_GRID_DIRECTORY, DROPBOX_GRID_DIRECTORY_NON_STEAM
+from interfaces.user_interaction import UserInteraction
 from steam.steam_id import SteamId
 
 
@@ -161,35 +163,34 @@ class DropboxManager:
             return filename, postfix
 
 
-    def get_authorization_token_from_user_cli(self, app_key, app_secret, retries=3):
+    def get_authorization_token_from_user(self, app_key, app_secret, user_interaction: UserInteraction, retries=3):
         if retries == 0:
-            print("Failed to authenticate after 3 attempts.")
+            user_interaction.show_message("Failed to authenticate after 3 attempts.")
             return None
         auth_flow = dropbox.DropboxOAuth2FlowNoRedirect(app_key, app_secret, token_access_type='offline')
         authorize_url = auth_flow.start()
-        print("1. Go to: " + authorize_url)
-        print("2. Click 'Allow' (you might have to log in first)")
-        print("3. Copy the authorization code.")
-        auth_code = input("Enter the authorization code here: ").strip()
+
+        message = (
+            f"1. Go to: {authorize_url}\n"
+            "2. Click 'Allow' (you might have to log in first).\n"
+            "3. Copy the authorization code."
+        )
+        user_interaction.show_message(message)
+        auth_code = user_interaction.get_user_input("Enter the authorization code here: ")
         
         try:
             oauth_result = auth_flow.finish(auth_code)
             return oauth_result
         except AuthError as e:
-            print(f"Error during authentication: {e}")
+            user_interaction.show_message(f"Error during authentication: {e}")
         except requests.exceptions.HTTPError as e:
-            print(f"HTTP error occurred: {e.response.status_code} {e.response.reason}")
-            print(f"Response content: {e.response.text}")
+            user_interaction.show_message(f"HTTP error occurred: {e.response.status_code} {e.response.reason}")
+            user_interaction.show_message(f"Response content: {e.response.text}")
         except Exception as e:
-            print(f"An unexpected error occurred: {e}")
-        return self.get_authorization_token_from_user_cli(app_key, app_secret, retries-1)
+            user_interaction.show_message(f"An unexpected error occurred: {e}")
+        return self.get_authorization_token_from_user(app_key, app_secret, user_interaction, retries-1)
 
 
-    def authenticate_dropbox(self, app_key, app_secret):
-        self._save_dropbox_app_details(app_key, app_secret)
-        oauth_result = self.get_authorization_token_from_user_cli(app_key, app_secret)
-        self._save_dropbox_access_token(oauth_result.access_token, oauth_result.refresh_token)
-        
 
     def _download_newer_files_for_category(self, access_token, local_folder, dropbox_folder_path, non_steam_games, is_steam):       
         dbx = dropbox.Dropbox(access_token)
