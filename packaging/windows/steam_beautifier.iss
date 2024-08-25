@@ -10,7 +10,7 @@ Compression=lzma
 SolidCompression=yes
 
 [Files]
-Source: "dist\steam_beautifier.exe"; DestDir: "{app}"
+Source: "installer\windows\dist\steam_beautifier.exe"; DestDir: "{app}"
 ; Add any other application files here
 
 [icons]
