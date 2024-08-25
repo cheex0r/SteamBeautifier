@@ -5,6 +5,7 @@ import tkinter as tk
 
 from config.config_prompt_cli import ConfigPromptCli
 from config.config_prompt_gui import ConfigPromptGui
+from config.encryption_manager import EncryptionManager
 
 
 class ConfigFileManager:
@@ -32,11 +33,11 @@ class ConfigFileManager:
                 config = json.load(f)
             print(f"Loaded config file: {config_path}")
 
+            salt = config.get('encryption_salt')
             # Decrypt all encrypted fields
             for field in config.get('_encrypted_fields', []):
                 if field in config:
-                    config[field] = self._decrypt(config[field])
-
+                    config[field] = self._decrypt(config[field], salt)
         else:
             config = None
         return config
@@ -78,11 +79,14 @@ class ConfigFileManager:
 
 
     def _save_preferences(self, config):
+        if config.get('encryption_salt') is None:
+            config['encryption_salt'] = EncryptionManager.generate_salt()
+
         # Encrypt all fields that need to be encrypted
         config_out = config.copy()
         for field in self.ENCRYPTED_FIELDS:
             if field in config:
-                config_out[field] = self._encrypt(config[field])
+                config_out[field] = self._encrypt(config[field], salt=config['encryption_salt'])
 
         config_out['_encrypted_fields'] = self.ENCRYPTED_FIELDS  # Store the list of encrypted fields
         config_path = self._get_config_path()
@@ -92,11 +96,9 @@ class ConfigFileManager:
         return config_path
 
 
-    def _encrypt(self, data):
-        # TODO: Implement your encryption logic here
-        return data  # Replace this with actual encryption
+    def _encrypt(self, data, salt):
+        return EncryptionManager(salt=salt).encrypt(data)
 
 
-    def _decrypt(self, data):
-        # TODO: Implement your decryption logic here
-        return data  # Replace this with actual decryption
+    def _decrypt(self, data, salt):
+        return EncryptionManager(salt=salt).decrypt(data)
