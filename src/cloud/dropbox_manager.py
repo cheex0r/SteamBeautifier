@@ -3,7 +3,6 @@ import dropbox
 import hashlib
 import os
 import requests
-from datetime import datetime, timedelta
 from tqdm import tqdm
 
 from dropbox.files import WriteMode
@@ -20,17 +19,10 @@ class DropboxManager:
 
     def _get_dropbox_access_token(self):
         preferences = self.config_manager._load_preferences()
-        access_token = preferences.get('dropbox_access_token')
         refresh_token = preferences.get('dropbox_refresh_token')
-        token_expiry = preferences.get('dropbox_token_expiry')
-
-        if access_token and token_expiry:
-            token_expiry = datetime.strptime(token_expiry, '%Y-%m-%d %H:%M:%S')
-            if datetime.now() >= token_expiry:
-                access_token = self._refresh_dropbox_access_token(refresh_token)
-        
+        access_token = self._refresh_dropbox_access_token(refresh_token)
         return access_token
-    
+
 
     def _refresh_dropbox_access_token(self, refresh_token):
         preferences = self.config_manager._load_preferences()
@@ -50,37 +42,11 @@ class DropboxManager:
         response_data = response.json()
 
         if response.status_code == 200:
-            new_access_token = response_data['access_token']
-            expires_in = response_data.get('expires_in', 14400)  # 14400 seconds = 4 hours
-            self._save_dropbox_access_token(new_access_token, refresh_token, expires_in)
-            return new_access_token
+            access_token = response_data['access_token']
+            return access_token
         else:
             print(f"Failed to refresh access token: {response.content}")
             return None
-
-
-    # TODO: Encrypt sensitive data before saving to disk
-    def _save_dropbox_access_token(self, access_token, refresh_token, expires_in=14400):
-        preferences = self.config_manager._load_preferences() or {}
-        preferences['dropbox_access_token'] = access_token
-        preferences['dropbox_refresh_token'] = refresh_token
-        preferences['dropbox_token_expiry'] = self.get_token_expiry_now(expires_in)
-        self.config_manager._save_preferences(preferences)
-
-
-    def get_token_expiry_now(self, expires_in=14400):
-        return self.get_token_expiry(datetime.now(), expires_in)
-
-
-    def get_token_expiry(self, time, expires_in=14400):
-        return (time + timedelta(seconds=expires_in)).strftime('%Y-%m-%d %H:%M:%S')
-
-
-    def _save_dropbox_app_details(self, app_key, app_secret):
-        preferences = self.config_manager._load_preferences() or {}
-        preferences['dropbox_app_key'] = app_key
-        preferences['dropbox_app_secret'] = app_secret
-        self.config_manager._save_preferences(preferences)
 
 
     def _upload_file_to_dropbox(self, access_token, local_file_path, dropbox_folder, new_filename=None):
