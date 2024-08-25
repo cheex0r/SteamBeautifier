@@ -1,9 +1,9 @@
 from cloud.dropbox_manager import DropboxManager
 from config.config_file_manager import ConfigFileManager
 from config.start_on_boot_manager import start_on_boot
+from steam.launch_steam import launch_steam
 from steam.steam_directory_finder import get_grid_path
 from steam.steam_image_downloader import download_missing_images
-from steam.launch_steam import launch_steam
 from steam.steam_remove_whats_new import remove_whats_new
 from steam.steam_shortcuts_manager import parse_shortcuts_vdf
 from steam.steam_id import SteamId
@@ -28,8 +28,13 @@ def main():
     if preferences['launch'] or preferences['bigpicture']:
         launch_steam(preferences['bigpicture'])
 
-    if preferences['dropbox_app_key']:
-        dropbox_manager = DropboxManager(config_file_manager)
+
+    dropbox_manager = None
+    if preferences['dropbox_sync']:
+        dropbox_manager = _get_dropbox_manager(config_file_manager)
+
+    if dropbox_manager:
+        dropbox_manager = _get_dropbox_manager(config_file_manager)
         dropbox_manager.download_newer_files(local_grid_file_path,
                                              steam_id,
                                              non_steam_games)
@@ -39,11 +44,23 @@ def main():
                                 preferences['steamgriddb_api_key'],
                                 steam_id)
 
-    if preferences['dropbox_app_key']:
-        dropbox_manager = DropboxManager(config_file_manager)
+    if dropbox_manager:
+        dropbox_manager = _get_dropbox_manager(config_file_manager)
         dropbox_manager.upload_newer_files(local_grid_file_path,
                                            steam_id,
                                            non_steam_games)
+        
+
+def _get_dropbox_manager(config_file_manager):
+    try:
+        return DropboxManager(
+            app_key=config_file_manager.preferences['dropbox_app_key'],
+            app_secret=config_file_manager.preferences['dropbox_app_secret'],
+            refresh_token=config_file_manager.preferences['dropbox_refresh_token'],
+        )
+    except KeyError as e:
+        print(f"Error: {e}. Please run the configuration setup.")
+        return None
 
 
 if __name__ == "__main__":

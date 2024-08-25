@@ -2,7 +2,7 @@ import json
 import tkinter as tk
 import webbrowser
 
-from cloud.dropbox_manager import DropboxManager
+from cloud.dropbox_token_setup import DropboxTokenSetup
 
 
 class ConfigPromptGui:
@@ -10,7 +10,6 @@ class ConfigPromptGui:
         self.root = root
         self.schema = schema
         self.root.title("Steam Beautifier Configuration")
-        self.dropbox_manager = DropboxManager()
 
         # Configure padding around the main window
         self.root.configure(padx=20, pady=20)
@@ -51,7 +50,13 @@ class ConfigPromptGui:
         app_key = self.preferences.get('dropbox_app_key').get()
         app_secret = self.preferences.get('dropbox_app_secret').get()
         if app_key and app_secret:
-            auth_flow, url = self.dropbox_manager.start_authorization_flow(app_key, app_secret)
+            if (
+                not hasattr(self, 'dropbox_token_setup')
+                or self.dropbox_token_setup.app_key != app_key
+                or self.dropbox_token_setup.app_secret != app_secret
+            ): 
+                self.dropbox_token_setup = DropboxTokenSetup(app_key, app_secret)
+            auth_flow, url = self.dropbox_token_setup.start_authorization_flow()
             self.auth_flow = auth_flow
             self.schema['dropbox_access_code']['url'] = url
 
@@ -122,10 +127,9 @@ class ConfigPromptGui:
            preferences.get('dropbox_access_code'):
 
             access_code = preferences['dropbox_access_code']
-            oauth_result = self.dropbox_manager.get_authorization_token_with_access_code(self.auth_flow, access_code)
-            preferences['dropbox_access_token'] = oauth_result.access_token
+            del preferences['dropbox_access_code']
+            oauth_result = self.dropbox_token_setup.get_authorization_token_with_access_code(self.auth_flow, access_code)
             preferences['dropbox_refresh_token'] = oauth_result.refresh_token
-            preferences['dropbox_token_expiry'] = self.dropbox_manager.get_token_expiry_now()
         return preferences
 
 
