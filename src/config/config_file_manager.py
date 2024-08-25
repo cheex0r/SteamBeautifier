@@ -8,12 +8,39 @@ from config.config_prompt_gui import ConfigPromptGui
 
 
 class ConfigFileManager:
-    ENCRYPTED_FIELDS = ['steam_api_key',
-                        'steamgriddb_api_key',
-                        'dropbox_app_key',
-                        'dropbox_app_secret',
-                        'dropbox_refresh_token',
-                        ]
+    ENCRYPTED_FIELDS = [
+        'steam_api_key',
+        'steamgriddb_api_key',
+        'dropbox_app_key',
+        'dropbox_app_secret',
+        'dropbox_refresh_token',
+    ]
+
+
+    def load_or_create_preferences(self):
+        config = self._load_preferences()
+        if not config:
+            config = self._prompt_user_for_config()
+            self._save_preferences(config)
+        return config
+
+
+    def _load_preferences(self):
+        config_path = self._get_config_path()
+        if os.path.exists(config_path):
+            with open(config_path, 'r') as f:
+                config = json.load(f)
+            print(f"Loaded config file: {config_path}")
+
+            # Decrypt all encrypted fields
+            for field in config.get('_encrypted_fields', []):
+                if field in config:
+                    config[field] = self._decrypt(config[field])
+
+        else:
+            config = None
+        return config
+
 
     def _get_config_path(self):
         if os.name == 'nt':  # Windows
@@ -63,31 +90,6 @@ class ConfigFileManager:
         with open(config_path, 'w') as f:
             json.dump(config_out, f, indent=4)
         return config_path
-
-
-    def _load_preferences(self):
-        config_path = self._get_config_path()
-        if os.path.exists(config_path):
-            with open(config_path, 'r') as f:
-                config = json.load(f)
-            print(f"Loaded config file: {config_path}")
-
-            # Decrypt all encrypted fields
-            for field in config.get('_encrypted_fields', []):
-                if field in config:
-                    config[field] = self._decrypt(config[field])
-
-        else:
-            config = None
-        return config
-
-
-    def load_or_create_preferences(self):
-        config = self._load_preferences()
-        if not config:
-            config = self._prompt_user_for_config()
-            self._save_preferences(config)
-        return config
 
 
     def _encrypt(self, data):
