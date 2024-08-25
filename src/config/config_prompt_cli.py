@@ -35,12 +35,11 @@ class ConfigPromptCli:
             dropbox_token_setup = DropboxTokenSetup(app_key, app_secret)
             try:
                 oauth_result = dropbox_token_setup.get_authorization_token_from_user(CLIUserInteraction())
-                preferences['dropbox_access_token'] = oauth_result.access_token
                 preferences['dropbox_refresh_token'] = oauth_result.refresh_token
-                preferences['dropbox_token_expiry'] = dropbox_token_setup.get_token_expiry_now()
                 print("Dropbox authentication successful.")
             except Exception as e:
                 print(f"Error getting Dropbox tokens: {e}")
+        del preferences['dropbox_access_code']
 
 
 def main():

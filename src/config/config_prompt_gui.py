@@ -127,8 +127,8 @@ class ConfigPromptGui:
            preferences.get('dropbox_access_code'):
 
             access_code = preferences['dropbox_access_code']
+            del preferences['dropbox_access_code']
             oauth_result = self.dropbox_token_setup.get_authorization_token_with_access_code(self.auth_flow, access_code)
-            preferences['dropbox_access_token'] = oauth_result.access_token
             preferences['dropbox_refresh_token'] = oauth_result.refresh_token
         return preferences
 
