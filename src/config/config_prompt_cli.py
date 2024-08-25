@@ -40,7 +40,7 @@ class ConfigPromptCli:
                 print("Dropbox authentication successful.")
             except Exception as e:
                 print(f"Error getting Dropbox tokens: {e}")
-        del preferences['dropbox_access_code']
+        preferences.pop('dropbox_access_code', None)
 
 
 def main():
