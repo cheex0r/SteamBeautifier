@@ -1,6 +1,6 @@
 import json
 
-from cloud.dropbox_manager import DropboxManager
+from cloud.dropbox_token_setup import DropboxTokenSetup
 from interfaces.cli_user_interaction import CLIUserInteraction
 
 
@@ -32,12 +32,12 @@ class ConfigPromptCli:
         app_key = preferences.get('dropbox_app_key', None)
         app_secret = preferences.get('dropbox_app_secret', None)
         if app_key and app_secret:
-            dropbox_manager = DropboxManager()
+            dropbox_token_setup = DropboxTokenSetup(app_key, app_secret)
             try:
-                oauth_result = dropbox_manager.get_authorization_token_from_user(app_key, app_secret, CLIUserInteraction())
+                oauth_result = dropbox_token_setup.get_authorization_token_from_user(CLIUserInteraction())
                 preferences['dropbox_access_token'] = oauth_result.access_token
                 preferences['dropbox_refresh_token'] = oauth_result.refresh_token
-                preferences['dropbox_token_expiry'] = dropbox_manager.get_token_expiry_now()
+                preferences['dropbox_token_expiry'] = dropbox_token_setup.get_token_expiry_now()
                 print("Dropbox authentication successful.")
             except Exception as e:
                 print(f"Error getting Dropbox tokens: {e}")
