@@ -12,25 +12,24 @@ from steam.steam_directory_finder import get_steam_path
 
 def main():
     config_file_manager = ConfigFileManager()
-    preferences = config_file_manager.load_or_create_preferences()
+    config = config_file_manager.load_or_create_preferences()
 
-    steam_id64 = preferences['steam_id']
+    steam_id64 = config['steam_id']
     steam_id = SteamId(steamid64=steam_id64)
 
     local_grid_file_path = get_grid_path(steam_id)
     steam_path = get_steam_path()
     non_steam_games = parse_shortcuts_vdf(steam_path, steam_id)
     
-    start_on_boot(preferences.get('start_on_boot', False))
-    if preferences['remove_whats_new']:
+    start_on_boot(config.get('start_on_boot', False))
+    if config['remove_whats_new']:
         remove_whats_new()
 
-    if preferences['launch'] or preferences['bigpicture']:
-        launch_steam(preferences['bigpicture'])
-
+    if config['launch'] or config['bigpicture']:
+        launch_steam(config['bigpicture'])
 
     dropbox_manager = None
-    if preferences['dropbox_sync']:
+    if config['dropbox_sync']:
         dropbox_manager = _get_dropbox_manager(config_file_manager)
 
     if dropbox_manager:
@@ -39,9 +38,9 @@ def main():
                                              steam_id,
                                              non_steam_games)
 
-    if preferences['download-images']:
-        download_missing_images(preferences['steam_api_key'],
-                                preferences['steamgriddb_api_key'],
+    if config['download-images']:
+        download_missing_images(config['steam_api_key'],
+                                config['steamgriddb_api_key'],
                                 steam_id)
 
     if dropbox_manager:
