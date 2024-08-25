@@ -3,14 +3,13 @@ import dropbox
 import hashlib
 import os
 import requests
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from tqdm import tqdm
 
 from dropbox.files import WriteMode
 from dropbox.exceptions import AuthError
 
 from cloud.constants import DROPBOX_GRID_DIRECTORY, DROPBOX_GRID_DIRECTORY_NON_STEAM
-from interfaces.user_interaction import UserInteraction
 from steam.steam_id import SteamId
 
 
