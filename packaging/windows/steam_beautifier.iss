@@ -10,12 +10,16 @@ Compression=lzma
 SolidCompression=yes
 
 [Files]
-Source: "installer\windows\dist\steam_beautifier.exe"; DestDir: "{app}"
-; Add any other application files here
+Source: "..\..\installer\windows\dist\steam_beautifier.exe"; DestDir: "{app}"
 
-[icons]
-Name: "{userstartup}\My Program"; Filename: "{app}\steam_beautifier.exe"; Tasks:StartMenuEntry;
+[Tasks]
+Name: "StartMenuEntry"; Description: "Run at Windows startup"; GroupDescription: "Additional icons:"; Flags: unchecked
+Name: "desktopicon"; Description: "Create a &desktop icon"; GroupDescription: "Additional icons:"; Flags: unchecked
+
+[Icons]
+Name: "{group}\Steam Beautifier"; Filename: "{app}\steam_beautifier.exe";
 Name: "{commonstartup}\My Program"; Filename: "{app}\steam_beautifier.exe"; Tasks:StartMenuEntry;
+Name: "{userdesktop}\Steam Beautifier"; Filename: "{app}\steam_beautifier.exe"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\steam_beautifier.exe"; Flags: postinstall runascurrentuser skipifsilent
