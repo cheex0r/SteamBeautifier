@@ -8,7 +8,8 @@ class ConfigPromptCli:
     def prompt_user(self, config):
         print()
         if config['type'] == 'bool':
-            return input(f"{config['description']} (True/False): ").lower() == 'true'
+            user_input = input(f"{config['description']} (True/False): ").lower()
+            return user_input in ['true', 't', 'yes', 'y', '1']
         elif config['type'] == 'str':
             if 'url' in config:
                 print(f"You can get your {config['description']} here: {config['url']}")
