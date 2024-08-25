@@ -1,5 +1,7 @@
 import datetime
 import dropbox
+import requests
+from dropbox.exceptions import AuthError
 
 from interfaces.user_interaction import UserInteraction
 
