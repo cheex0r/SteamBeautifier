@@ -13,29 +13,19 @@ from steam.steam_id import SteamId
 
 
 class DropboxManager:
-    def __init__(self, config_manager=None):
-        self.config_manager = config_manager
+    def __init__(self, app_key, app_secret, refresh_token):
+        self.app_key = app_key
+        self.app_secret = app_secret
+        self.refresh_token = refresh_token
 
 
-    def _get_dropbox_access_token(self):
-        preferences = self.config_manager._load_preferences()
-        refresh_token = preferences.get('dropbox_refresh_token')
-        access_token = self._refresh_dropbox_access_token(refresh_token)
-        return access_token
-
-
-    def _refresh_dropbox_access_token(self, refresh_token):
-        preferences = self.config_manager._load_preferences()
-        refresh_token = preferences.get('dropbox_refresh_token')
-        app_key = preferences.get('dropbox_app_key')
-        app_secret = preferences.get('dropbox_app_secret')
-        
+    def _get_access_token(self):
         url = "https://api.dropbox.com/oauth2/token"
         data = {
             "grant_type": "refresh_token",
-            "refresh_token": refresh_token,
-            "client_id": app_key,
-            "client_secret": app_secret,
+            "refresh_token": self.refresh_token,
+            "client_id": self.app_key,
+            "client_secret": self.app_secret,
         }
 
         response = requests.post(url, data=data)
@@ -167,7 +157,7 @@ class DropboxManager:
 
 
     def download_newer_files(self, local_folder, steam_id: SteamId, non_steam_games={}):
-        access_token = self._get_dropbox_access_token()
+        access_token = self._get_access_token()
         if not access_token:
             print("Dropbox access token not found. Please authenticate first.")
             return
@@ -225,7 +215,7 @@ class DropboxManager:
 
 
     def upload_newer_files(self, local_folder, steam_id: SteamId, non_steam_games={}):
-        access_token = self._get_dropbox_access_token()
+        access_token = self._get_access_token()
         if not access_token:
             print("Dropbox access token not found. Please authenticate first.")
             return
