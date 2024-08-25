@@ -12,7 +12,7 @@ class ConfigFileManager:
             return os.path.join(os.getenv('APPDATA'), 'Steam Beautifier', 'config.json')
         else:  # Linux and other OS
             return os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
-        
+
     def _get_config_schema(self):
         schema_path = self._get_schema_path()
         with open(schema_path, 'r') as schema_file:
@@ -27,7 +27,7 @@ class ConfigFileManager:
             return 'config_schema.json'
 
 
-    def _create_preferences(self, use_gui=True):
+    def _prompt_user_for_config(self, use_gui=True):
         schema = self._get_config_schema()
         if use_gui:
             root = tk.Tk()
@@ -36,15 +36,15 @@ class ConfigFileManager:
             root.destroy()
         else:
             config_prompt = ConfigPromptCli(root, schema)
-        user_preferences = config_prompt.get_user_preferences()
-        return user_preferences
+        user_config = config_prompt.get_config()
+        return user_config
 
 
-    def _save_preferences(self, preferences):
+    def _save_preferences(self, config):
         config_path = self._get_config_path()
         os.makedirs(os.path.dirname(config_path), exist_ok=True)
         with open(config_path, 'w') as f:
-            json.dump(preferences, f, indent=4)
+            json.dump(config, f, indent=4)
 
         return config_path
 
@@ -53,16 +53,16 @@ class ConfigFileManager:
 
         if os.path.exists(config_path):
             with open(config_path, 'r') as f:
-                preferences = json.load(f)
+                config = json.load(f)
             print(f"Loaded config file: {config_path}")
         else:
-            preferences = None
+            config = None
         
-        return preferences
+        return config
 
     def load_or_create_preferences(self):
-        preferences = self._load_preferences()
-        if not preferences:
-            preferences = self._create_preferences()
-            self._save_preferences(preferences)
-        return preferences
+        config = self._load_preferences()
+        if not config:
+            config = self._prompt_user_for_config()
+            self._save_preferences(config)
+        return config
