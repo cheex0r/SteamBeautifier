@@ -1,3 +1,4 @@
+import datetime
 import dropbox
 
 from interfaces.user_interaction import UserInteraction
@@ -51,3 +52,7 @@ class DropboxTokenSetup:
         except Exception as e:
             user_interaction.show_message(f"An unexpected error occurred: {e}")
         return self.get_authorization_token_from_user(user_interaction, retries-1)
+
+
+    def get_token_expiry_now(self, expires_in=14400):
+        return self.get_token_expiry(datetime.now(), expires_in)
