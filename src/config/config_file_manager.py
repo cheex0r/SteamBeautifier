@@ -45,9 +45,13 @@ class ConfigFileManager:
 
     def _get_config_path(self):
         if os.name == 'nt':  # Windows
-            return os.path.join(os.getenv('APPDATA'), 'Steam Beautifier', 'config.json')
+            base_path = os.path.join(os.getenv('APPDATA'), 'Steam Beautifier', 'config.json')
         else:  # Linux and other OS
-            return os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
+            # Linux: Use XDG_CONFIG_HOME or fallback to ~/.config
+            base_path = os.getenv('XDG_CONFIG_HOME', os.path.join(os.path.expanduser('~'), '.config'))
+            base_path = os.path.join(base_path, 'SteamBeautifier')
+        os.makedirs(base_path, exist_ok=True)
+        return os.path.join(base_path, 'config.json')
 
 
     def _get_config_schema(self):
@@ -90,6 +94,7 @@ class ConfigFileManager:
 
         config_out['_encrypted_fields'] = self.ENCRYPTED_FIELDS  # Store the list of encrypted fields
         config_path = self._get_config_path()
+        print(f"Saving config file: {config_path}")
         os.makedirs(os.path.dirname(config_path), exist_ok=True)
         with open(config_path, 'w') as f:
             json.dump(config_out, f, indent=4)
