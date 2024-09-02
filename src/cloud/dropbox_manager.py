@@ -40,6 +40,8 @@ class DropboxManager:
         if not os.path.exists(local_folder):
             os.makedirs(local_folder)
 
+        self.update_local_manifest_from_local_files(local_folder, non_steam_games)
+
         # Rekey the non-Steam games dictionary to use the name as the key
         non_steam_games = {self._hash_game_name(game['AppName']): game for game in non_steam_games.values()}
 
@@ -55,6 +57,8 @@ class DropboxManager:
         
         steam_app_files = []
         non_steam_app_files = []
+
+        self.update_local_manifest_from_local_files(local_folder, non_steam_games)
 
         files = os.listdir(local_folder)
         for file in files:
@@ -81,6 +85,17 @@ class DropboxManager:
         self._upload_file_to_dropbox(access_token,
                                      manifest_bytes,
                                      self.dropbox_manifest_path)
+
+
+    def update_local_manifest_from_local_files(self, local_folder, non_steam_games):
+        for root, _, files in os.walk(local_folder):
+            for file_name in files:
+                local_file_path = os.path.join(root, file_name)
+                dropbox_file_path = self._get_dropbox_file_path(file_name, non_steam_games)
+                file_hash = self._calculate_dropbox_content_hash(local_file_path)
+                self._set_timestamp_if_hash_changed(dropbox_file_path, file_hash)
+        
+        self._remove_deleted_files_from_manifest(local_folder, non_steam_games)
 
 
     def _download_manifest(self):
@@ -127,7 +142,6 @@ class DropboxManager:
             dropbox_file_metadata = self._get_all_file_hashes_in_dropbox_folder(dbx, dropbox_folder_path)
             def process_file(dropbox_file_name, dropbox_file_hash):
                 dropbox_file_path = f"{dropbox_folder_path}/{dropbox_file_name}"
-                self._set_timestamp_if_absent(dropbox_file_path)
                 if not self._should_download_based_on_timestamps(dropbox_file_path):
                     return 0
                 game_name, postfix = self._extract_gameid_from_filename(dropbox_file_name)
@@ -138,37 +152,58 @@ class DropboxManager:
                     if clean_game_name not in non_steam_games:
                         return  0
                     local_file_name = f"{non_steam_games[clean_game_name]['GridImageId']}{postfix}"
-
                 local_file_path = os.path.join(local_folder, local_file_name)
 
-                if os.path.isfile(local_file_path):
-                    local_file_hash = self._calculate_dropbox_content_hash(local_file_path)
-                    if local_file_hash != dropbox_file_hash:
-                        tqdm.write(f"Downloading from Dropbox {dropbox_file_path} to {local_file_path}")
-                        self._download_file_from_dropbox_to_file(access_token, dropbox_folder_path + '/' + dropbox_file_name, local_file_path)
-                        self.local_manifest[dropbox_file_path]['timestamp'] = self.remote_manifest[dropbox_file_path]['timestamp']
-                        return 1
-                else:
+                if not os.path.isfile(local_file_path) or self._calculate_dropbox_content_hash(local_file_path) != dropbox_file_hash:
                     tqdm.write(f"Downloading from Dropbox {dropbox_file_path} to {local_file_path}")
                     self._download_file_from_dropbox_to_file(access_token, dropbox_folder_path + '/' + dropbox_file_name, local_file_path)
                     self.local_manifest[dropbox_file_path]['timestamp'] = self.remote_manifest[dropbox_file_path]['timestamp']
+                    self.local_manifest[dropbox_file_path]['hash'] = dropbox_file_hash
                     return 1
                 return 0
-
             with concurrent.futures.ThreadPoolExecutor() as executor:
-                num_downloads = sum(tqdm(executor.map(lambda item: process_file(item[0], item[1]), dropbox_file_metadata.items()), total=len(dropbox_file_metadata), desc="Downloading files from Dropbox"))
+                num_downloads = sum(
+                    tqdm(executor.map(lambda item: process_file(item[0], item[1]), dropbox_file_metadata.items()),
+                         total=len(dropbox_file_metadata),
+                         desc="Downloading files from Dropbox"))
             print(f"Downloaded {num_downloads} files from Dropbox")
 
         except dropbox.exceptions.ApiError as e:
             print(f"Error during the download and verification process: {e}")
 
-    
+
+    def _get_dropbox_file_path(self, file_name, non_steam_games):
+        game_id, postfix = self._extract_gameid_from_filename(file_name)
+        if game_id not in non_steam_games:
+            return f"{self.dropbox_folder_path}/{file_name}"
+        else:
+            # For non-Steam games, use the hashed game name
+            if game_id in non_steam_games:
+                hash_game_name = self._hash_game_name(non_steam_games[game_id]['AppName'])
+                dbx_filename = f"{hash_game_name}{postfix}"
+                return f"{self.dropbox_folder_path_non_steam}/{dbx_filename}"
+            else:
+                raise ValueError(f"Game ID {game_id} not found in non-Steam games list")
+            
+
+    def _remove_deleted_files_from_manifest(self, local_folder, non_steam_games):
+        existing_files = set()
+        for root, _, files in os.walk(local_folder):
+            for file_name in files:
+                dropbox_file_path = self._get_dropbox_file_path(file_name, non_steam_games)
+                existing_files.add(dropbox_file_path)
+        
+        keys_to_delete = [key for key in self.local_manifest if key not in existing_files]
+        for key in keys_to_delete:
+            del self.local_manifest[key]
+
+
     def _should_download_based_on_timestamps(self, key):
         if self.remote_manifest is None:  # Check if remote_manifest is None
             raise ValueError("Remote manifest is not set. Cannot perform timestamp comparison.")
-        if key not in self.local_manifest:
+        if key not in self.local_manifest or 'timestamp' not in self.local_manifest[key]:
             return True
-        if key not in self.remote_manifest:
+        if key not in self.remote_manifest or 'timestamp' not in self.remote_manifest[key]:
             return False
         return self.remote_manifest[key]['timestamp'] > self.local_manifest[key]['timestamp']
     
@@ -176,19 +211,31 @@ class DropboxManager:
     def _should_upload_based_on_timestamps(self, key):
         if self.remote_manifest is None:  # Check if remote_manifest is None
             raise ValueError("Remote manifest is not set. Cannot perform timestamp comparison.")
-        if key not in self.remote_manifest:
+        if key not in self.remote_manifest or 'timestamp' not in self.remote_manifest[key]:
             return True
-        if key not in self.local_manifest:
+        if key not in self.local_manifest or 'timestamp' not in self.local_manifest[key]:
             return False
         return self.remote_manifest[key]['timestamp'] < self.local_manifest[key]['timestamp']
     
 
-    def _set_timestamp_if_absent(self, key):
-        unix_timestamp = int(time.time())
+    def _initialize_manifest_key(self, key):
         if key not in self.local_manifest:
             self.local_manifest[key] = {}
+
+
+    def _initialize_manifest_timestamp(self, key):
+        self._initialize_manifest_key(key)
         if 'timestamp' not in self.local_manifest[key] or self.local_manifest[key]['timestamp'] is None:
-            self.local_manifest[key]['timestamp'] = unix_timestamp
+            self.local_manifest[key]['timestamp'] = int(time.time())
+
+
+    def _set_timestamp_if_hash_changed(self, key, hash):
+        self._initialize_manifest_key(key)
+        current_hash = self.local_manifest[key].get('hash')
+        
+        if current_hash is None or current_hash != hash:
+            self.local_manifest[key]['hash'] = hash
+            self.local_manifest[key]['timestamp'] = int(time.time())
 
     
     def _update_manifest_timestamp(self, key, timestamp):
@@ -234,24 +281,18 @@ class DropboxManager:
                 game_id, postfix = self._extract_gameid_from_filename(local_file_name)
                 local_file_path = os.path.join(local_folder, local_file_name)
                 dbx_filename = local_file_name
-                dbx_filepath = f"{dbx_folder}/{dbx_filename}"
-                self._set_timestamp_if_absent(dbx_filepath)
-                if not self._should_upload_based_on_timestamps(dbx_filepath):
-                    return 0
-
                 if game_id in non_steam_games:
                     hash_game_name = self._hash_game_name(non_steam_games[game_id]['AppName'])
                     dbx_filename = f"{hash_game_name}{postfix}"
+                dbx_filepath = f"{dbx_folder}/{dbx_filename}"
+
+                self._initialize_manifest_timestamp(dbx_filepath)
+                if not self._should_upload_based_on_timestamps(dbx_filepath):
+                    return 0
                 
                 if os.path.isfile(local_file_path):
                     local_file_hash = self._calculate_dropbox_content_hash(local_file_path)
-                    if dbx_filename in dropbox_file_hashes:
-                        dropbox_file_hash = dropbox_file_hashes[dbx_filename]
-                        if local_file_hash != dropbox_file_hash:
-                            tqdm.write(f"Uploading {local_file_path} to Dropbox {dbx_filepath}")
-                            self._upload_local_file_to_dropbox(access_token, local_file_path, dbx_folder, dbx_filename)
-                            return 1
-                    else:
+                    if dbx_filename not in dropbox_file_hashes or local_file_hash != dropbox_file_hashes[dbx_filename]:
                         tqdm.write(f"Uploading {local_file_path} to Dropbox {dbx_filepath}")
                         self._upload_local_file_to_dropbox(access_token, local_file_path, dbx_folder, dbx_filename)
                         return 1
