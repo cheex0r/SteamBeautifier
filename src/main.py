@@ -1,5 +1,5 @@
 from cloud.dropbox_manager import DropboxManager
-from config.config_file_manager import ConfigFileManager
+from filemanagers.config_file_manager import ConfigFileManager
 from config.start_on_boot_manager import start_on_boot
 from steam.launch_steam import launch_steam
 from steam.steam_directory_finder import get_grid_path
