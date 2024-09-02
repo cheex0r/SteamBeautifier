@@ -33,7 +33,7 @@ def main():
     if config['dropbox_sync']:
         dropbox_manifest_file_manager = DropboxManifestFileManager(steam_id)
         dropbox_manifest = dropbox_manifest_file_manager.load_or_create_manifest()
-        dropbox_manager = _get_dropbox_manager(config, dropbox_manifest)
+        dropbox_manager = _get_dropbox_manager(config, steam_id, dropbox_manifest)
 
     if dropbox_manager:
         dropbox_manager.download_newer_files(local_grid_file_path,
@@ -47,6 +47,8 @@ def main():
     if dropbox_manager:
         dropbox_manager.upload_newer_files(local_grid_file_path,
                                            non_steam_games)
+        dropbox_manifest_file_manager.save_file(dropbox_manager.get_manifest())
+        dropbox_manager.upload_manifest()
         
 
 def _get_dropbox_manager(config, steam_id, dropbox_manifest):
@@ -56,7 +58,7 @@ def _get_dropbox_manager(config, steam_id, dropbox_manifest):
             app_secret=config['dropbox_app_secret'],
             refresh_token=config['dropbox_refresh_token'],
             steam_id=steam_id,
-            manifest_file=dropbox_manifest
+            manifest=dropbox_manifest
         )
     except KeyError as e:
         print(f"Error reading Dropbox values even though 'dropbox_sync' is true: {e}. Please run the configuration setup.")

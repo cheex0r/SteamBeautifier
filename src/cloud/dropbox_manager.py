@@ -1,8 +1,10 @@
 import concurrent.futures
 import dropbox
 import hashlib
+import json
 import os
 import requests
+import time
 from tqdm import tqdm
 
 from dropbox.files import WriteMode
@@ -16,7 +18,7 @@ from steam.steam_id import SteamId
 
 
 class DropboxManager:
-    def __init__(self, app_key, app_secret, refresh_token, steam_id: SteamId, dropbox_manifest):
+    def __init__(self, app_key, app_secret, refresh_token, steam_id: SteamId, manifest):
         self.app_key = app_key
         self.app_secret = app_secret
         self.refresh_token = refresh_token
@@ -25,7 +27,7 @@ class DropboxManager:
         self.dropbox_folder_path_non_steam = DROPBOX_GRID_NON_STEAM_DIRECTORY.format(user_id=steam_id.get_steamid())
         self.dropbox_manifest_path = DROPBOX_MANIFEST_PATH.format(user_id=steam_id.get_steamid())
 
-        self.local_manifest = dropbox_manifest
+        self.local_manifest = manifest
         self.remote_manifest = self._download_manifest()
 
 
@@ -41,7 +43,7 @@ class DropboxManager:
         # Rekey the non-Steam games dictionary to use the name as the key
         non_steam_games = {self._hash_game_name(game['AppName']): game for game in non_steam_games.values()}
 
-        self._download_newer_files_for_category(access_token, local_folder, self.dropbox_folder_path, non_steam_games, is_steam=True)
+        self._download_newer_files_for_category(access_token, local_folder, self.dropbox_folder_path,           non_steam_games, is_steam=True)
         self._download_newer_files_for_category(access_token, local_folder, self.dropbox_folder_path_non_steam, non_steam_games, is_steam=False)
 
 
@@ -62,20 +64,39 @@ class DropboxManager:
             elif len(game_id) < 10: # Skip stale images to old shortcuts
                 steam_app_files.append(file)
 
-        self._upload_newer_files(access_token, local_folder, steam_app_files, self.dbx_folder_path)
-        self._upload_newer_files(access_token, local_folder, non_steam_app_files, self.dbx_folder_path_non_steam, non_steam_games)
+        self._upload_newer_files(access_token, local_folder, steam_app_files, self.dropbox_folder_path)
+        self._upload_newer_files(access_token, local_folder, non_steam_app_files, self.dropbox_folder_path_non_steam, non_steam_games)
 
 
     def get_manifest(self):
         return self.local_manifest
+    
+
+    def upload_manifest(self):
+        access_token = self._get_access_token()
+        if not access_token:
+            print("Dropbox access token not found. Please authenticate first.")
+            return
+        manifest_bytes = json.dumps(self.local_manifest).encode('utf-8')
+        self._upload_file_to_dropbox(access_token,
+                                     manifest_bytes,
+                                     self.dropbox_manifest_path)
 
 
     def _download_manifest(self):
         access_token = self._get_access_token()
         if not access_token:
             print("Dropbox access token not found. Please authenticate first.")
-            return
-        return self._download_file_from_dropbox(access_token, self.dropbox_folder_path)
+            return {}
+        try:
+            manifest = self._download_file_from_dropbox(access_token, self.dropbox_folder_path)
+            if manifest:
+                return manifest
+            else:
+                return {}
+        except dropbox.exceptions.ApiError as e:
+            print(f"Error downloading manifest from Dropbox: {e}")
+            return {}
 
 
     def _get_access_token(self):
@@ -105,6 +126,10 @@ class DropboxManager:
             # Retrieve all file metadata in the Dropbox folder, handling pagination
             dropbox_file_metadata = self._get_all_file_hashes_in_dropbox_folder(dbx, dropbox_folder_path)
             def process_file(dropbox_file_name, dropbox_file_hash):
+                dropbox_file_path = f"{dropbox_folder_path}/{dropbox_file_name}"
+                self._set_timestamp_if_absent(dropbox_file_path)
+                if not self._should_download_based_on_timestamps(dropbox_file_path):
+                    return 0
                 game_name, postfix = self._extract_gameid_from_filename(dropbox_file_name)
                 clean_game_name = game_name.strip('{}')
                 local_file_name = dropbox_file_name
@@ -119,12 +144,14 @@ class DropboxManager:
                 if os.path.isfile(local_file_path):
                     local_file_hash = self._calculate_dropbox_content_hash(local_file_path)
                     if local_file_hash != dropbox_file_hash:
-                        tqdm.write(f"Downloading from Dropbox {dropbox_folder_path}/{dropbox_file_name} to {local_file_path}")
+                        tqdm.write(f"Downloading from Dropbox {dropbox_file_path} to {local_file_path}")
                         self._download_file_from_dropbox_to_file(access_token, dropbox_folder_path + '/' + dropbox_file_name, local_file_path)
+                        self.local_manifest[dropbox_file_path]['timestamp'] = self.remote_manifest[dropbox_file_path]['timestamp']
                         return 1
                 else:
-                    tqdm.write(f"Downloading from Dropbox {dropbox_folder_path}/{dropbox_file_name} to {local_file_path}")
+                    tqdm.write(f"Downloading from Dropbox {dropbox_file_path} to {local_file_path}")
                     self._download_file_from_dropbox_to_file(access_token, dropbox_folder_path + '/' + dropbox_file_name, local_file_path)
+                    self.local_manifest[dropbox_file_path]['timestamp'] = self.remote_manifest[dropbox_file_path]['timestamp']
                     return 1
                 return 0
 
@@ -134,6 +161,46 @@ class DropboxManager:
 
         except dropbox.exceptions.ApiError as e:
             print(f"Error during the download and verification process: {e}")
+
+    
+    def _should_download_based_on_timestamps(self, key):
+        if self.remote_manifest is None:  # Check if remote_manifest is None
+            raise ValueError("Remote manifest is not set. Cannot perform timestamp comparison.")
+        if key not in self.local_manifest:
+            return True
+        if key not in self.remote_manifest:
+            return False
+        return self.remote_manifest[key]['timestamp'] > self.local_manifest[key]['timestamp']
+    
+
+    def _should_upload_based_on_timestamps(self, key):
+        if self.remote_manifest is None:  # Check if remote_manifest is None
+            raise ValueError("Remote manifest is not set. Cannot perform timestamp comparison.")
+        if key not in self.remote_manifest:
+            return True
+        if key not in self.local_manifest:
+            return False
+        return self.remote_manifest[key]['timestamp'] < self.local_manifest[key]['timestamp']
+    
+
+    def _set_timestamp_if_absent(self, key):
+        unix_timestamp = int(time.time())
+        if key not in self.local_manifest:
+            self.local_manifest[key] = {}
+        if 'timestamp' not in self.local_manifest[key] or self.local_manifest[key]['timestamp'] is None:
+            self.local_manifest[key]['timestamp'] = unix_timestamp
+
+    
+    def _update_manifest_timestamp(self, key, timestamp):
+        # Ensure the key exists in both local and remote manifests
+        if key in self.local_manifest:
+            if key not in self.local_manifest:
+                self.local_manifest[key] = {}
+
+
+            self.local_manifest[key]['timestamp'] = self.remote_manifest[key].get('timestamp')
+
+        self.local_manifest[key]['timestamp'] = timestamp
 
 
     def _download_file_from_dropbox_to_file(self, access_token, dropbox_path, local_path):
@@ -167,6 +234,11 @@ class DropboxManager:
                 game_id, postfix = self._extract_gameid_from_filename(local_file_name)
                 local_file_path = os.path.join(local_folder, local_file_name)
                 dbx_filename = local_file_name
+                dbx_filepath = f"{dbx_folder}/{dbx_filename}"
+                self._set_timestamp_if_absent(dbx_filepath)
+                if not self._should_upload_based_on_timestamps(dbx_filepath):
+                    return 0
+
                 if game_id in non_steam_games:
                     hash_game_name = self._hash_game_name(non_steam_games[game_id]['AppName'])
                     dbx_filename = f"{hash_game_name}{postfix}"
@@ -176,12 +248,12 @@ class DropboxManager:
                     if dbx_filename in dropbox_file_hashes:
                         dropbox_file_hash = dropbox_file_hashes[dbx_filename]
                         if local_file_hash != dropbox_file_hash:
-                            tqdm.write(f"Uploading {local_file_path} to Dropbox {dbx_folder}/{dbx_filename}")
-                            self._upload_file_to_dropbox(access_token, local_file_path, dbx_folder, dbx_filename)
+                            tqdm.write(f"Uploading {local_file_path} to Dropbox {dbx_filepath}")
+                            self._upload_local_file_to_dropbox(access_token, local_file_path, dbx_folder, dbx_filename)
                             return 1
                     else:
-                        tqdm.write(f"Uploading {local_file_path} to Dropbox {dbx_folder}/{dbx_filename}")
-                        self._upload_file_to_dropbox(access_token, local_file_path, dbx_folder, dbx_filename)
+                        tqdm.write(f"Uploading {local_file_path} to Dropbox {dbx_filepath}")
+                        self._upload_local_file_to_dropbox(access_token, local_file_path, dbx_folder, dbx_filename)
                         return 1
                 return 0
             
@@ -194,14 +266,22 @@ class DropboxManager:
             print(f"Error during the upload and verification process: {e}")
 
 
-    def _upload_file_to_dropbox(self, access_token, local_file_path, dropbox_folder, new_filename=None):
-        dbx = dropbox.Dropbox(access_token)
+    def _upload_local_file_to_dropbox(self, access_token, local_file_path, dropbox_folder, new_filename=None):
         if new_filename is None:
             new_filename = os.path.basename(local_file_path)
         dropbox_file_path = f"{dropbox_folder}/{new_filename}"
         
         with open(local_file_path, 'rb') as f:
-            dbx.files_upload(f.read(), dropbox_file_path, mode=dropbox.files.WriteMode('overwrite'))
+            file = f.read()
+            self._upload_file_to_dropbox(access_token, file, dropbox_file_path)
+
+
+    def _upload_file_to_dropbox(self, access_token, file, dropbox_path, mode=dropbox.files.WriteMode('overwrite')):
+        try:
+            dbx = dropbox.Dropbox(access_token)
+            dbx.files_upload(file, dropbox_path, mode=mode)
+        except dropbox.exceptions.ApiError as e:
+            print(f"Error uploading file to {dropbox_path} on Dropbox: {e}")
 
 
     def _calculate_dropbox_content_hash(self, file_path):
