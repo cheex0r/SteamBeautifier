@@ -42,9 +42,13 @@ class FileManagerBase:
 
     def _get_file_path(self):
         if os.name == 'nt':  # Windows
-            return os.path.join(os.getenv('APPDATA'), 'Steam Beautifier', self.filename)
+            base_path = os.path.join(os.getenv('APPDATA'), 'Steam Beautifier', self.filename)
         else:  # Linux and other OS
-            return os.path.join(os.path.dirname(os.path.abspath(__file__)), self.filename)
+            # Linux: Use XDG_CONFIG_HOME or fallback to ~/.config
+            base_path = os.getenv('XDG_CONFIG_HOME', os.path.join(os.path.expanduser('~'), '.config'))
+            base_path = os.path.join(base_path, 'SteamBeautifier')
+        os.makedirs(base_path, exist_ok=True)
+        return os.path.join(base_path, self.filename)
 
 
     def _save_preferences(self, data):
