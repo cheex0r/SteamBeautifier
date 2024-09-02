@@ -7,46 +7,50 @@ from tqdm import tqdm
 
 from dropbox.files import WriteMode
 from dropbox.exceptions import AuthError
-
-from cloud.constants import DROPBOX_GRID_DIRECTORY, DROPBOX_GRID_DIRECTORY_NON_STEAM
+from cloud.constants import (
+    DROPBOX_GRID_DIRECTORY,
+    DROPBOX_GRID_NON_STEAM_DIRECTORY,
+    DROPBOX_MANIFEST_PATH,
+)
 from steam.steam_id import SteamId
 
 
 class DropboxManager:
-    def __init__(self, app_key, app_secret, refresh_token):
+    def __init__(self, app_key, app_secret, refresh_token, steam_id: SteamId, dropbox_manifest):
         self.app_key = app_key
         self.app_secret = app_secret
         self.refresh_token = refresh_token
 
+        self.dropbox_folder_path = DROPBOX_GRID_DIRECTORY.format(user_id=steam_id.get_steamid())
+        self.dropbox_folder_path_non_steam = DROPBOX_GRID_NON_STEAM_DIRECTORY.format(user_id=steam_id.get_steamid())
+        self.dropbox_manifest_path = DROPBOX_MANIFEST_PATH.format(user_id=steam_id.get_steamid())
 
-    def download_newer_files(self, local_folder, steam_id: SteamId, non_steam_games={}):
+        self.local_manifest = dropbox_manifest
+        self.remote_manifest = self._download_manifest()
+
+
+    def download_newer_files(self, local_folder, non_steam_games={}):
         access_token = self._get_access_token()
         if not access_token:
             print("Dropbox access token not found. Please authenticate first.")
             return
         
-        dropbox_folder_path = DROPBOX_GRID_DIRECTORY.format(user_id=steam_id.get_steamid())
-        dropbox_folder_path_non_steam = DROPBOX_GRID_DIRECTORY_NON_STEAM.format(user_id=steam_id.get_steamid())
-
         if not os.path.exists(local_folder):
             os.makedirs(local_folder)
 
         # Rekey the non-Steam games dictionary to use the name as the key
         non_steam_games = {self._hash_game_name(game['AppName']): game for game in non_steam_games.values()}
 
-        self._download_newer_files_for_category(access_token, local_folder, dropbox_folder_path, non_steam_games, is_steam=True)
-        self._download_newer_files_for_category(access_token, local_folder, dropbox_folder_path_non_steam, non_steam_games, is_steam=False)
+        self._download_newer_files_for_category(access_token, local_folder, self.dropbox_folder_path, non_steam_games, is_steam=True)
+        self._download_newer_files_for_category(access_token, local_folder, self.dropbox_folder_path_non_steam, non_steam_games, is_steam=False)
 
 
-    def upload_newer_files(self, local_folder, steam_id: SteamId, non_steam_games={}):
+    def upload_newer_files(self, local_folder, non_steam_games={}):
         access_token = self._get_access_token()
         if not access_token:
             print("Dropbox access token not found. Please authenticate first.")
             return
         
-        dbx_folder_path = DROPBOX_GRID_DIRECTORY.format(user_id=steam_id.get_steamid())
-        dbx_folder_path_non_steam = DROPBOX_GRID_DIRECTORY_NON_STEAM.format(user_id=steam_id.get_steamid())
-
         steam_app_files = []
         non_steam_app_files = []
 
@@ -58,8 +62,20 @@ class DropboxManager:
             elif len(game_id) < 10: # Skip stale images to old shortcuts
                 steam_app_files.append(file)
 
-        self._upload_newer_files(access_token, local_folder, steam_app_files, dbx_folder_path)
-        self._upload_newer_files(access_token, local_folder, non_steam_app_files, dbx_folder_path_non_steam, non_steam_games)
+        self._upload_newer_files(access_token, local_folder, steam_app_files, self.dbx_folder_path)
+        self._upload_newer_files(access_token, local_folder, non_steam_app_files, self.dbx_folder_path_non_steam, non_steam_games)
+
+
+    def get_manifest(self):
+        return self.local_manifest
+
+
+    def _download_manifest(self):
+        access_token = self._get_access_token()
+        if not access_token:
+            print("Dropbox access token not found. Please authenticate first.")
+            return
+        return self._download_file_from_dropbox(access_token, self.dropbox_folder_path)
 
 
     def _get_access_token(self):
@@ -104,11 +120,11 @@ class DropboxManager:
                     local_file_hash = self._calculate_dropbox_content_hash(local_file_path)
                     if local_file_hash != dropbox_file_hash:
                         tqdm.write(f"Downloading from Dropbox {dropbox_folder_path}/{dropbox_file_name} to {local_file_path}")
-                        self._download_file_from_dropbox(access_token, dropbox_folder_path + '/' + dropbox_file_name, local_file_path)
+                        self._download_file_from_dropbox_to_file(access_token, dropbox_folder_path + '/' + dropbox_file_name, local_file_path)
                         return 1
                 else:
                     tqdm.write(f"Downloading from Dropbox {dropbox_folder_path}/{dropbox_file_name} to {local_file_path}")
-                    self._download_file_from_dropbox(access_token, dropbox_folder_path + '/' + dropbox_file_name, local_file_path)
+                    self._download_file_from_dropbox_to_file(access_token, dropbox_folder_path + '/' + dropbox_file_name, local_file_path)
                     return 1
                 return 0
 
@@ -120,15 +136,24 @@ class DropboxManager:
             print(f"Error during the download and verification process: {e}")
 
 
-    def _download_file_from_dropbox(self, access_token, dropbox_path, local_path):
+    def _download_file_from_dropbox_to_file(self, access_token, dropbox_path, local_path):
+        file = self._download_file_from_dropbox(access_token, dropbox_path)
+        try:
+            with open(local_path, 'wb') as f:
+                f.write(file)
+        except Exception as e:
+            print(f"Error writing file to disk: {e}")
+
+
+    def _download_file_from_dropbox(self, access_token, dropbox_path):
         dbx = dropbox.Dropbox(access_token)
         try:
             metadata, res = dbx.files_download(path=dropbox_path)
-            with open(local_path, 'wb') as f:
-                f.write(res.content)
+            return res.content
         except dropbox.exceptions.ApiError as e:
             print(f"Error downloading file: {e}")
-
+            return None
+        
 
     def _upload_newer_files(self, access_token, local_folder, files, dbx_folder, non_steam_games={}):
         dbx = dropbox.Dropbox(access_token)
@@ -167,7 +192,6 @@ class DropboxManager:
 
         except dropbox.exceptions.ApiError as e:
             print(f"Error during the upload and verification process: {e}")
-
 
 
     def _upload_file_to_dropbox(self, access_token, local_file_path, dropbox_folder, new_filename=None):
