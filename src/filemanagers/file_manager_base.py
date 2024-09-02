@@ -10,7 +10,9 @@ class FileManagerBase:
         self.encryption_fields = encryption_fields
 
 
-    def load_or_create_file(self, default_data = {}):
+    def load_or_create_file(self, default_data = None):
+        if default_data is None:
+            default_data = {}
         if not os.path.exists(self._get_file_path()):
             return self.save_file(default_data)
         return self.load_file()
