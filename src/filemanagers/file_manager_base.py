@@ -27,24 +27,38 @@ class FileManagerBase:
     def load_file(self):
         file_path = self._get_file_path()
         if os.path.exists(file_path):
-            with open(file_path, 'r') as f:
-                data = json.load(f)
-            print(f"Loaded file: {file_path}")
-
+            try:
+                with open(file_path, 'r') as f:
+                    data = json.load(f)
+            except json.JSONDecodeError as e:
+                print(f"Error decoding JSON from file: {e}")
+                return None
+            except IOError as e:
+                print(f"Error reading file: {e}")
+                return None
+            if data is None:
+                print("No data loaded; returning None.")
+                return None
             salt = data.get('encryption_salt', None)
             # Decrypt all encrypted fields
             if salt:
-                for field in data.get('_encrypted_fields', []):
+                encrypted_fields = data.get('_encrypted_fields', [])
+                for field in encrypted_fields:
                     if field in data:
-                        data[field] = self._decrypt(data[field], salt)
+                        try:
+                            data[field] = self._decrypt(data[field], salt)
+                        except Exception as e:
+                            print(f"Error decrypting field {field}: {e}")
+                            data[field] = None  # or handle decryption error as needed
+            return data
         else:
-            data = None
-        return data
+            print(f"File not found: {file_path}")
+            return None
 
 
     def _get_file_path(self):
         if os.name == 'nt':  # Windows
-            base_path = os.path.join(os.getenv('APPDATA'), 'Steam Beautifier', self.filename)
+            base_path = os.path.join(os.getenv('APPDATA'), 'Steam Beautifier')
         else:  # Linux and other OS
             # Linux: Use XDG_CONFIG_HOME or fallback to ~/.config
             base_path = os.getenv('XDG_CONFIG_HOME', os.path.join(os.path.expanduser('~'), '.config'))
