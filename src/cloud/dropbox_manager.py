@@ -231,7 +231,7 @@ class DropboxManager:
     def _initialize_manifest_timestamp(self, key):
         self._initialize_manifest_key(key)
         if 'timestamp' not in self.local_manifest[key] or self.local_manifest[key]['timestamp'] is None:
-            self.local_manifest[key]['timestamp'] = int(time.time())
+            self.local_manifest[key]['timestamp'] = int(0)
 
 
     def _set_timestamp_if_hash_changed(self, key, hash):
@@ -240,7 +240,9 @@ class DropboxManager:
         
         if current_hash is None or current_hash != hash:
             self.local_manifest[key]['hash'] = hash
-            self.local_manifest[key]['timestamp'] = int(time.time())
+            self.local_manifest[key]['timestamp'] = int(0)
+            if current_hash:
+                self.local_manifest[key]['timestamp'] = int(time.time())
 
     
     def _update_manifest_timestamp(self, key, timestamp):
@@ -248,10 +250,7 @@ class DropboxManager:
         if key in self.local_manifest:
             if key not in self.local_manifest:
                 self.local_manifest[key] = {}
-
-
             self.local_manifest[key]['timestamp'] = self.remote_manifest[key].get('timestamp')
-
         self.local_manifest[key]['timestamp'] = timestamp
 
 
