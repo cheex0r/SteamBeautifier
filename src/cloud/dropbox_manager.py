@@ -160,8 +160,6 @@ class DropboxManager:
                 if not os.path.isfile(local_file_path) or self._calculate_dropbox_content_hash(local_file_path) != dropbox_file_hash:
                     tqdm.write(f"Downloading from Dropbox {dropbox_file_path} to {local_file_path}")
                     self._download_file_from_dropbox_to_file(access_token, dropbox_folder_path + '/' + dropbox_file_name, local_file_path)
-                    if dropbox_file_path in self.remote_manifest:
-                        print(f"Found {dropbox_file_path} in remote manifest")  # Debug statement
                     if not self.local_manifest[dropbox_file_path]:
                         self.local_manifest[dropbox_file_path] = {}
                     self.local_manifest[dropbox_file_path]['hash'] = dropbox_file_hash
