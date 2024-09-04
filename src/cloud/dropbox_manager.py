@@ -160,7 +160,7 @@ class DropboxManager:
                 if not os.path.isfile(local_file_path) or self._calculate_dropbox_content_hash(local_file_path) != dropbox_file_hash:
                     tqdm.write(f"Downloading from Dropbox {dropbox_file_path} to {local_file_path}")
                     self._download_file_from_dropbox_to_file(access_token, dropbox_folder_path + '/' + dropbox_file_name, local_file_path)
-                    if not self.local_manifest[dropbox_file_path]:
+                    if self.local_manifest.get(dropbox_file_path) is None:
                         self.local_manifest[dropbox_file_path] = {}
                     self.local_manifest[dropbox_file_path]['hash'] = dropbox_file_hash
                     self.local_manifest[dropbox_file_path]['timestamp'] = self.remote_manifest[dropbox_file_path]['timestamp']
@@ -336,16 +336,20 @@ class DropboxManager:
         SHA-256 hashing each chunk, concatenating the results, and then hashing
         the concatenated result again.
         """
-        block_size = 4 * 1024 * 1024  # 4MB
-        hash_func = hashlib.sha256()
-        with open(file_path, 'rb') as f:
-            while True:
-                chunk = f.read(block_size)
-                if not chunk:
-                    break
-                chunk_hash = hashlib.sha256(chunk).digest()
-                hash_func.update(chunk_hash)
-        return hash_func.hexdigest()
+        try:
+            block_size = 4 * 1024 * 1024  # 4MB
+            hash_func = hashlib.sha256()
+            with open(file_path, 'rb') as f:
+                while True:
+                    chunk = f.read(block_size)
+                    if not chunk:
+                        break
+                    chunk_hash = hashlib.sha256(chunk).digest()
+                    hash_func.update(chunk_hash)
+            return hash_func.hexdigest()
+        except FileNotFoundError:
+            print(f"Error computing hash, File not found: {file_path}")
+            return None
     
 
     def _get_all_file_hashes_in_dropbox_folder(self, dbx, folder_path):
