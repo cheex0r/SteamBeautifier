@@ -104,7 +104,9 @@ class DropboxManager:
             print("Dropbox access token not found. Please authenticate first.")
             return {}
         try:
-            manifest = self._download_file_from_dropbox(access_token, self.dropbox_folder_path)
+            manifest_bytes = self._download_file_from_dropbox(access_token, self.dropbox_manifest_path)
+            manifest_str = manifest_bytes.decode('utf-8')
+            manifest = json.loads(manifest_str)
             if manifest:
                 return manifest
             else:
