@@ -15,6 +15,14 @@ def main():
     config_file_manager = ConfigFileManager()
     config = config_file_manager.load_or_create_preferences()
 
+    start_on_boot(config.get('start_on_boot', False))
+    if config['remove_whats_new']:
+        remove_whats_new()
+
+    if config['launch'] or config['bigpicture']:
+        launch_steam(config['bigpicture'])
+    steam_path = get_steam_path()
+
     steam_id64s = config.get('steam_id', '*')
     if steam_id64s.strip() == '*':
         steam_ids = get_steam_ids()
@@ -22,21 +30,13 @@ def main():
         steam_ids = [SteamId(steamid64=steam_id64.strip()) for steam_id64 in steam_id64s.split(',')]
 
     for steam_id in steam_ids: 
-        _run_task_for_user(config, steam_id)
+        _run_task_for_user(config, steam_path, steam_id)
 
 
-def _run_task_for_user(config, steam_id: SteamId):
+def _run_task_for_user(config, steam_path, steam_id: SteamId):
     local_grid_file_path = get_grid_path(steam_id)
-    steam_path = get_steam_path()
     non_steam_games = parse_shortcuts_vdf(steam_path, steam_id)
     
-    start_on_boot(config.get('start_on_boot', False))
-    if config['remove_whats_new']:
-        remove_whats_new()
-
-    if config['launch'] or config['bigpicture']:
-        launch_steam(config['bigpicture'])
-
     dropbox_manager = None
     if config['dropbox_sync']:
         dropbox_manifest_file_manager = DropboxManifestFileManager(steam_id)
