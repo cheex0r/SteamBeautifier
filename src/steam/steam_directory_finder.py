@@ -46,6 +46,14 @@ def find_steam_path_unix():
 
     return None
 
+def get_steam_ids():
+    steam_path = get_steam_path()
+    userdata_path = os.path.join(steam_path, 'userdata')
+    steam_ids = []
+    for user_id in os.listdir(userdata_path):
+        steam_ids.append(SteamId(steamid=user_id))
+    return steam_ids
+
 
 def get_grid_path(steam_id: SteamId):
     steam_path = get_steam_path()

@@ -2,7 +2,7 @@ from cloud.dropbox_manager import DropboxManager
 from filemanagers.config_file_manager import ConfigFileManager
 from config.start_on_boot_manager import start_on_boot
 from steam.launch_steam import launch_steam
-from steam.steam_directory_finder import get_grid_path
+from steam.steam_directory_finder import get_grid_path, get_steam_ids
 from steam.steam_image_downloader import download_missing_images
 from steam.steam_remove_whats_new import remove_whats_new
 from steam.steam_shortcuts_manager import parse_shortcuts_vdf
@@ -16,8 +16,16 @@ def main():
     config = config_file_manager.load_or_create_preferences()
 
     steam_id64 = config['steam_id']
-    steam_id = SteamId(steamid64=steam_id64)
+    if steam_id64 == '*':
+        steam_ids = get_steam_ids()
+    else:
+        steam_ids = [SteamId(steamid64=steam_id64)]
 
+    for steam_id in steam_ids: 
+        _run_task_for_user(config, steam_id)
+
+
+def _run_task_for_user(config, steam_id: SteamId):
     local_grid_file_path = get_grid_path(steam_id)
     steam_path = get_steam_path()
     non_steam_games = parse_shortcuts_vdf(steam_path, steam_id)
