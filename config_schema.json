@@ -43,7 +43,7 @@
     },
     "steam_id": {
         "type": "str",
-        "description": "Enter your SteamID64. Enter * for all users.",
+        "description": "Enter your SteamID64. Enter * for all users, comma seperate for multiple users.",
         "url": "https://steamid.io/",
         "link_text": "Get SteamID64",
         "default": "*",

@@ -15,11 +15,11 @@ def main():
     config_file_manager = ConfigFileManager()
     config = config_file_manager.load_or_create_preferences()
 
-    steam_id64 = config['steam_id']
-    if steam_id64 == '*':
+    steam_id64s = config.get('steam_id', '*')
+    if steam_id64s.strip() == '*':
         steam_ids = get_steam_ids()
     else:
-        steam_ids = [SteamId(steamid64=steam_id64)]
+        steam_ids = [SteamId(steamid64=steam_id64.strip()) for steam_id64 in steam_id64s.split(',')]
 
     for steam_id in steam_ids: 
         _run_task_for_user(config, steam_id)
