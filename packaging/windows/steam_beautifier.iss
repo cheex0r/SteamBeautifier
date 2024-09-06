@@ -1,4 +1,5 @@
 [Setup]
+AppId={{3a7441d1-22be-49f6-b612-b34b2b8bae26}}
 AppName=Steam Beautifier
 AppVersion=1.0
 UsePreviousAppDir=no
@@ -8,6 +9,9 @@ OutputDir=Output
 OutputBaseFilename=Setup_SteamBeautifier
 Compression=lzma
 SolidCompression=yes
+UninstallDisplayIcon={app}\steam_beautifier.exe
+AllowNoIcons=yes ; TODO Delete once have icons.
+AlwaysRestart=no
 
 [Files]
 Source: "..\..\installer\windows\dist\steam_beautifier.exe"; DestDir: "{app}"
@@ -21,3 +25,6 @@ Name: "{userdesktop}\Steam Beautifier"; Filename: "{app}\steam_beautifier.exe"; 
 
 [Run]
 Filename: "{app}\steam_beautifier.exe"; Flags: postinstall runascurrentuser skipifsilent
+
+[UninstallDelete]
+Type: filesandordirs; Name: "{app}"
