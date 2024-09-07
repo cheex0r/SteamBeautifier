@@ -1,12 +1,11 @@
 import os
-import platform
 import sys
-if platform.system() == "Windows":
+if os.name == 'nt':  # Windows
     import winshell
 
 
 def start_on_boot(start_on_boot=True):
-    if platform.system() == "Windows":
+    if os.name == 'nt':  # Windows
         _start_on_boot_windows(start_on_boot)
 
 
