@@ -28,3 +28,4 @@ Filename: "{app}\steam_beautifier.exe"; Flags: postinstall runascurrentuser skip
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}"
+Type: files; Name: "{userappdata}\Microsoft\Windows\Start Menu\Programs\Startup\SteamBeautifier.lnk"
