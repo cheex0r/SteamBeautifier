@@ -1,7 +1,7 @@
 [Setup]
 AppId={{3a7441d1-22be-49f6-b612-b34b2b8bae26}}
 AppName=Steam Beautifier
-AppVersion=1.0
+AppVersion=1.1
 UsePreviousAppDir=no
 DefaultDirName={pf}\Steam Beautifier
 DefaultGroupName=Steam Beautifier
