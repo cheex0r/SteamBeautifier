@@ -10,7 +10,7 @@ OutputBaseFilename=Setup_SteamBeautifier
 Compression=lzma
 SolidCompression=yes
 UninstallDisplayIcon={app}\steam_beautifier.exe
-AllowNoIcons=yes ; TODO Delete once have icons.
+AllowNoIcons=yes
 AlwaysRestart=no
 
 [Files]
