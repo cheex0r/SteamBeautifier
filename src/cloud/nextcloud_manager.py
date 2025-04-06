@@ -94,36 +94,36 @@ class NextcloudManager:
         headers = {'Depth': '1'}
         response = requests.request('PROPFIND', folder_url, auth=self.auth, headers=headers)
         files = {}
-        if response.status_code in [200, 207]:
-            try:
-                root = ET.fromstring(response.content)
-                ns = {'d': 'DAV:'}
-                # Each <d:response> represents either the folder itself or a file/subfolder
-                for response_elem in root.findall('d:response', ns):
-                    href_elem = response_elem.find('d:href', ns)
-                    if href_elem is None:
-                        continue
-                    href = href_elem.text
-                    # Extract the file name from the URL path
-                    parsed = urllib.parse.urlparse(href)
-                    path = parsed.path
-                    filename = os.path.basename(path.rstrip('/'))
-                    # Decode the filename to convert %20 back to spaces
-                    filename = urllib.parse.unquote(filename)
-                    # Skip the folder itself (empty filename)
-                    if not filename:
-                        continue
-                    mod_elem = response_elem.find('.//d:getlastmodified', ns)
-                    if mod_elem is not None and mod_elem.text:
-                        remote_dt = parsedate_to_datetime(mod_elem.text)
-                        mod_time = remote_dt.timestamp()
-                    else:
-                        mod_time = None
-                    files[filename] = mod_time
-            except Exception as e:
-                print(f"Error parsing remote folder listing: {e}")
-        else:
+        if response.status_code not in [200, 207]:
             print(f"Failed to list remote files in '{remote_folder}': {response.status_code} {response.text}")
+            return files
+        try:
+            root = ET.fromstring(response.content)
+            ns = {'d': 'DAV:'}
+            # Each <d:response> represents either the folder itself or a file/subfolder
+            for response_elem in root.findall('d:response', ns):
+                href_elem = response_elem.find('d:href', ns)
+                if href_elem is None:
+                    continue
+                href = href_elem.text
+                # Extract the file name from the URL path
+                parsed = urllib.parse.urlparse(href)
+                path = parsed.path
+                filename = os.path.basename(path.rstrip('/'))
+                # Decode the filename to convert %20 back to spaces
+                filename = urllib.parse.unquote(filename)
+                # Skip the folder itself (empty filename)
+                if not filename:
+                    continue
+                mod_elem = response_elem.find('.//d:getlastmodified', ns)
+                if mod_elem is not None and mod_elem.text:
+                    remote_dt = parsedate_to_datetime(mod_elem.text)
+                    mod_time = remote_dt.timestamp()
+                else:
+                    mod_time = None
+                files[filename] = mod_time
+        except Exception as e:
+            print(f"Error parsing remote folder listing: {e}")
         return files
 
 
@@ -136,27 +136,28 @@ class NextcloudManager:
         self._ensure_remote_folder(remote_folder)
         for filename in os.listdir(local_folder):
             local_path = os.path.join(local_folder, filename)
-            if os.path.isfile(local_path):
-                remote_url = self._get_remote_file_url(remote_folder, filename)
-                local_mod_time = os.path.getmtime(local_path)
-                remote_mod_time = self._get_remote_file_modtime(remote_url)
-                if remote_mod_time is None:
-                    print(f"Remote file '{filename}' does not exist. Uploading...")
-                elif local_mod_time > remote_mod_time:
-                    print(f"Local file '{filename}' is newer (local: {local_mod_time}, remote: {remote_mod_time}). Uploading...")
+            if not os.path.isfile(local_path):
+                continue  # Skip if it's not a file
+            remote_url = self._get_remote_file_url(remote_folder, filename)
+            local_mod_time = os.path.getmtime(local_path)
+            remote_mod_time = self._get_remote_file_modtime(remote_url)
+            if remote_mod_time is None:
+                print(f"Remote file '{filename}' does not exist. Uploading...")
+            elif local_mod_time > remote_mod_time:
+                print(f"Local file '{filename}' is newer (local: {local_mod_time}, remote: {remote_mod_time}). Uploading...")
+            else:
+                print(f"Skipping '{filename}' as remote file is up-to-date.")
+                continue
+            with open(local_path, 'rb') as f:
+                file_data = f.read()
+            try:
+                response = requests.put(remote_url, data=file_data, auth=self.auth)
+                if response.status_code in [200, 201, 204]:
+                    print(f"Uploaded '{filename}' successfully to {remote_url}")
                 else:
-                    print(f"Skipping '{filename}' as remote file is up-to-date.")
-                    continue
-                with open(local_path, 'rb') as f:
-                    file_data = f.read()
-                try:
-                    response = requests.put(remote_url, data=file_data, auth=self.auth)
-                    if response.status_code in [200, 201, 204]:
-                        print(f"Uploaded '{filename}' successfully to {remote_url}")
-                    else:
-                        print(f"Failed to upload '{filename}'. Status: {response.status_code} - {response.text}")
-                except Exception as e:
-                    print(f"Error uploading '{filename}': {e}")
+                    print(f"Failed to upload '{filename}'. Status: {response.status_code} - {response.text}")
+            except Exception as e:
+                print(f"Error uploading '{filename}': {e}")
 
     def download_all_files(self, local_folder, remote_folder):
         """
