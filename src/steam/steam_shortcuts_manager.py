@@ -1,3 +1,4 @@
+import hashlib
 import os
 import vdf
 import zlib
@@ -30,6 +31,10 @@ def _generate_non_steam_game_appid(exe_path, app_name):
     return str(appid), str(appid_old)
 
 
+def _hash_game_name(game_name):
+    return hashlib.sha256(game_name.encode('utf-8')).hexdigest()
+
+
 def get_shortcuts_vdf_path_from_steamid(steam_dir, steam_id: SteamId):
     return os.path.join(steam_dir, SHORTCUTS_VDF_PATH.format(user_id=steam_id.get_steamid()))
 
@@ -56,7 +61,8 @@ def parse_shortcuts_vdf(steam_dir, steam_id: SteamId):
             'Icon': app_data.get('icon', ''),
             'Tags': app_data.get('tags', []),
             'AppId': str(app_id),
-            'GridImageId': grid_image_id
+            'GridImageId': grid_image_id,
+            'CloudName': _hash_game_name(app_name)
         }
         apps_info[grid_image_id] = app_info
     
