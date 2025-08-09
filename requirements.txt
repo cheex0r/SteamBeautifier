@@ -5,3 +5,4 @@ Requests==2.32.3
 tqdm==4.66.5
 vdf==3.4
 winshell==0.6
+pywin32==311
