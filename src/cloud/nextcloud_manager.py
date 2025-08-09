@@ -1,6 +1,5 @@
 import os
 
-from api_proxies.nextcloud_api_proxy import NextcloudApiProxy
 
 class NextcloudManager:
     def __init__(self, api_proxy, base_folder=""):
