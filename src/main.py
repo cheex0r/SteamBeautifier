@@ -40,6 +40,7 @@ def main():
 def _run_task_for_user(config, steam_path, steam_id: SteamId):
     local_grid_file_path = get_grid_path(steam_id)
     non_steam_games = parse_shortcuts_vdf(steam_path, steam_id)
+    sync_manager = None
 
     if config.get('nextcloud_url', False):
         print(f"Nextcloud URL: {config['nextcloud_url']}")
