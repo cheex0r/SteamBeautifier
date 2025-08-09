@@ -41,19 +41,34 @@ class NextcloudApiProxy:
         for part in parts:
             current_path = f"{current_path}/{part}" if current_path else part
             folder_url = self._get_remote_url(current_path)
-            headers = {'Depth': '0'}
-            response = requests.request('PROPFIND', folder_url, auth=self.auth, headers=headers)
-            if response.status_code in [200, 207]:
-                print(f"Folder '{current_path}' exists.")
-            elif response.status_code == 404:
+            
+            # Check if the collection exists
+            response = requests.request('PROPFIND', folder_url, auth=self.auth, headers={'Depth': '0'})
+
+            # 404 means it doesn't exist, so we need to create it.
+            if response.status_code == 404:
                 print(f"Folder '{current_path}' does not exist. Creating it...")
                 mkcol_response = requests.request('MKCOL', folder_url, auth=self.auth)
-                if mkcol_response.status_code in (201, 405):  # 405 might occur if it’s created concurrently
+                
+                # 201 Created is success.
+                # 405 Method Not Allowed often means it was created by another process
+                # between our PROPFIND and MKCOL calls (a race condition), so we treat it as success.
+                if mkcol_response.status_code in (201, 405):
                     print(f"Folder '{current_path}' created successfully.")
                 else:
                     print(f"Failed to create folder '{current_path}': {mkcol_response.status_code} {mkcol_response.text}")
+                    # You might want to raise an exception here to stop the script
+                    raise Exception(f"Failed to create folder '{current_path}'")
+            
+            # 200 or 207 means it already exists.
+            elif response.status_code in (200, 207):
+                print(f"Folder '{current_path}' already exists.")
+            
+            # Handle other unexpected errors
             else:
                 print(f"Unexpected response ({response.status_code}) when checking folder '{current_path}'.")
+                print(response.text)
+                raise Exception(f"Failed to check/create folder '{current_path}'")
 
 
     def get_remote_file_modtime(self, remote_file):

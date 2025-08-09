@@ -100,7 +100,11 @@ class NextcloudManager:
         print(f"Downloading '{remote_file_path}' to '{local_file}'...")
         # Download the file content.
         file_data = self.api_proxy.download_file(remote_file_path)
-        
+
+        # Ensure the local destination directory exists before writing the file.
+        local_dir = os.path.dirname(local_file)
+        os.makedirs(local_dir, exist_ok=True)
+            
         # Write the file content to disk.
         with open(local_file, 'wb') as f:
             f.write(file_data)
