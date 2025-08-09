@@ -20,10 +20,15 @@ class SteamGridSyncManager:
     def upload_directory(self, local_dir):
         """
         Process all files in a local directory for upload.
+        If the local directory does not exist, the function will exit gracefully.
         
         Args:
             local_dir (str): The path to the local directory containing files to upload.
         """
+        if not os.path.isdir(local_dir):
+            print(f"Info: Local source directory not found: '{local_dir}'. Skipping sync for this folder.")
+            return # Exit the function gracefully
+
         self.cloud_manager.ensure_remote_folder(STEAM_GRID_SYNC_DIR)
         self.cloud_manager.ensure_remote_folder(NON_STEAM_DIR)
 
@@ -34,7 +39,7 @@ class SteamGridSyncManager:
             print(f"Processing file: {filename}")
             local_file = os.path.join(local_dir, filename)
             if not os.path.isfile(local_file):
-                continue  # Skip non-files
+                continue  # Skip non-files (like subdirectories)
             appid, postfix, extension = extract_appid_and_postfix(filename)
             
             cloud_filename = f"{STEAM_GRID_SYNC_DIR}/{filename}"
