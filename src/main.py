@@ -66,8 +66,9 @@ def _run_task_for_user(config, steam_path, steam_id: SteamId):
         dropbox_manager = _get_dropbox_manager(config, steam_id, dropbox_manifest)
 
     if dropbox_manager:
-        dropbox_manager.download_newer_files(local_grid_file_path,
-                                             non_steam_games)
+        dropbox_manager.download_newer_files(
+            local_grid_file_path,
+            non_steam_games)
 
     if config['download-images']:
         download_missing_images(config['steam_api_key'],
@@ -75,8 +76,9 @@ def _run_task_for_user(config, steam_path, steam_id: SteamId):
                                 steam_id)
 
     if dropbox_manager:
-        dropbox_manager.upload_newer_files(local_grid_file_path,
-                                           non_steam_games)
+        dropbox_manager.upload_newer_files(
+            local_grid_file_path,
+            non_steam_games)
         dropbox_manifest_file_manager.save_file(dropbox_manager.get_manifest())
         dropbox_manager.upload_manifest()
     
