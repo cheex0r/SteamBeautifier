@@ -85,5 +85,31 @@
             "depends_on": ["dropbox_sync", "dropbox_app_key"],
             "skip_cli": true
         }
+    },
+    "Nextcloud Backup": {
+        "nextcloud_sync": {
+            "type": "bool",
+            "description": "Sync your Steam grid images on Nextcloud?",
+            "default": false
+        },
+        "nextcloud_url": {
+            "type": "str",
+            "description": "Enter the URL of the Nextcloud server.",
+            "default": "",
+            "depends_on": "nextcloud_sync"
+        },
+        "nextcloud_user": {
+            "type": "str",
+            "description": "Enter the Nextcloud user name.",
+            "default": "",
+            "depends_on": "nextcloud_sync"
+        },
+        "nextcloud_password": {
+            "type": "str",
+            "description": "Enter the Nextcloud user's password.",
+            "default": "",
+            "depends_on": "nextcloud_sync",
+            "skip_cli": true
+        }
     }
 }

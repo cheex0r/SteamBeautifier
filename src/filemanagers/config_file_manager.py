@@ -15,6 +15,7 @@ class ConfigFileManager(FileManagerBase):
         'dropbox_app_key',
         'dropbox_app_secret',
         'dropbox_refresh_token',
+        'nextcloud_passowrd'
     ]
     FILE_NAME = 'config.json'
 
