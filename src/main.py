@@ -22,22 +22,16 @@ def main():
     start_on_boot(config.get('start_on_boot', False))
     if config['remove_whats_new']:
         remove_whats_new()
-
     if config['launch'] or config['bigpicture']:
         launch_steam(config['bigpicture'])
     steam_path = get_steam_path()
-
-    steam_id64s = config.get('steam_id', '*')
-    if steam_id64s.strip() == '*':
-        steam_ids = get_steam_ids()
-    else:
-        steam_ids = [SteamId(steamid64=steam_id64.strip()) for steam_id64 in steam_id64s.split(',')]
+    steam_ids = _get_steam_ids(config)
 
     for steam_id in steam_ids: 
-        _run_task_for_user(config, steam_path, steam_id)
+        _run_tasks_for_user(config, steam_path, steam_id)
 
 
-def _run_task_for_user(config, steam_path, steam_id: SteamId):
+def _run_tasks_for_user(config, steam_path, steam_id: SteamId):
     local_grid_file_path = get_grid_path(steam_id)
     non_steam_games = parse_shortcuts_vdf(steam_path, steam_id)
     sync_manager = None
@@ -71,9 +65,10 @@ def _run_task_for_user(config, steam_path, steam_id: SteamId):
             non_steam_games)
 
     if config['download-images']:
-        download_missing_images(config['steam_api_key'],
-                                config['steamgriddb_api_key'],
-                                steam_id)
+        download_missing_images(
+            config['steam_api_key'],
+            config['steamgriddb_api_key'],
+            steam_id)
 
     if dropbox_manager:
         dropbox_manager.upload_newer_files(
@@ -84,6 +79,7 @@ def _run_task_for_user(config, steam_path, steam_id: SteamId):
     
     if sync_manager:
         sync_manager.upload_directory(local_grid_file_path)
+
 
 def _get_dropbox_manager(config, steam_id, dropbox_manifest):
     try:
@@ -97,6 +93,16 @@ def _get_dropbox_manager(config, steam_id, dropbox_manifest):
     except KeyError as e:
         print(f"Error reading Dropbox values even though 'dropbox_sync' is true: {e}. Please run the configuration setup.")
         return None
+
+
+def _get_steam_ids(config):
+    steam_ids = []
+    steam_id64s = config.get('steam_id', '*')
+    if steam_id64s.strip() == '*':
+        steam_ids = get_steam_ids()
+    else:
+        steam_ids = [SteamId(steamid64=steam_id64.strip()) for steam_id64 in steam_id64s.split(',')]
+    return steam_ids
 
 
 if __name__ == "__main__":
