@@ -10,6 +10,10 @@ from steam.steam_id import SteamId
 from steam.steam_directory_finder import get_steam_path
 from filemanagers.dropbox_manifest_file_manager import DropboxManifestFileManager
 
+from api_proxies.nextcloud_api_proxy import NextcloudApiProxy
+from cloud.nextcloud_manager import NextcloudManager
+from cloud.steam_grid_sync_manager import SteamGridSyncManager
+
 
 def main():
     config_file_manager = ConfigFileManager()
@@ -36,6 +40,24 @@ def main():
 def _run_task_for_user(config, steam_path, steam_id: SteamId):
     local_grid_file_path = get_grid_path(steam_id)
     non_steam_games = parse_shortcuts_vdf(steam_path, steam_id)
+    sync_manager = None
+
+    if config.get('nextcloud_url', False):
+        print(f"Nextcloud URL: {config['nextcloud_url']}")
+        cloud_folder = f"{config.get('nextcloud_base_folder', 'SteamBeautifier')}/{steam_id.get_steamid()}"
+        api_proxy = NextcloudApiProxy(config['nextcloud_url'], config['nextcloud_user'], config['nextcloud_password'])
+        nextcloud_manager = NextcloudManager(api_proxy, cloud_folder)
+        sync_manager = SteamGridSyncManager(nextcloud_manager, non_steam_games)
+
+    if sync_manager:
+        try:
+            sync_manager.download_steam_games_grid(local_grid_file_path)
+        except Exception as e:
+            print(f"Error downloading Steam games grid: {e}")
+        try:
+            sync_manager.download_non_steam_games_grid(local_grid_file_path)
+        except Exception as e:
+            print(f"Error downloading non-Steam games: {e}")
     
     dropbox_manager = None
     if config['dropbox_sync']:
@@ -44,8 +66,9 @@ def _run_task_for_user(config, steam_path, steam_id: SteamId):
         dropbox_manager = _get_dropbox_manager(config, steam_id, dropbox_manifest)
 
     if dropbox_manager:
-        dropbox_manager.download_newer_files(local_grid_file_path,
-                                             non_steam_games)
+        dropbox_manager.download_newer_files(
+            local_grid_file_path,
+            non_steam_games)
 
     if config['download-images']:
         download_missing_images(config['steam_api_key'],
@@ -53,11 +76,14 @@ def _run_task_for_user(config, steam_path, steam_id: SteamId):
                                 steam_id)
 
     if dropbox_manager:
-        dropbox_manager.upload_newer_files(local_grid_file_path,
-                                           non_steam_games)
+        dropbox_manager.upload_newer_files(
+            local_grid_file_path,
+            non_steam_games)
         dropbox_manifest_file_manager.save_file(dropbox_manager.get_manifest())
         dropbox_manager.upload_manifest()
-        
+    
+    if sync_manager:
+        sync_manager.upload_directory(local_grid_file_path)
 
 def _get_dropbox_manager(config, steam_id, dropbox_manifest):
     try:
