@@ -1,7 +1,7 @@
 import argparse
 import os
 import time
-from tqdm import tqdm
+
 
 from api_proxies.steam_api_proxy import get_owned_games, has_600x900_grid_image
 from api_proxies.steamgriddb_api_proxy import (
@@ -20,14 +20,19 @@ from steam.steam_id import SteamId
 
 CACHE_FILE_NAME = 'games_with_vertical_grids.json'
 
-def download_missing_images(steam_api_key, steamgriddb_api_key, steam_id: SteamId, skip_if_exists=True):
+def download_missing_images(steam_api_key, steamgriddb_api_key, steam_id: SteamId, skip_if_exists=True, progress=None, task_id=None):
     owned_games = get_owned_games(steam_api_key, steam_id)
     steam_path = get_steam_path()
     grid_path = get_grid_path(steam_id)
     steam_grid_path = os.path.join(steam_path, grid_path)
+    if not os.path.exists(steam_grid_path):
+        os.makedirs(steam_grid_path)
     existing_grid_images = get_appids_with_custom_images(steam_grid_path)
     steam_games_with_vertical_grid_images = get_steam_games_with_vertical_grids()
-    for game in tqdm(owned_games, desc="Downloading images from SteamGridDB"):
+    if progress and task_id:
+        progress.update(task_id, total=len(owned_games))
+
+    for game in owned_games:
         appid = str(game['appid'])
         download_missing_images_for_game(steamgriddb_api_key,
                                          appid,
@@ -35,6 +40,8 @@ def download_missing_images(steam_api_key, steamgriddb_api_key, steam_id: SteamI
                                          existing_grid_images,
                                          steam_games_with_vertical_grid_images,
                                          skip_if_exists)
+        if progress and task_id:
+            progress.update(task_id, advance=1)
     save_steam_games_with_vertical_grids(steam_games_with_vertical_grid_images)
 
 
@@ -78,7 +85,8 @@ def download_missing_images_for_game(steamgriddb_api_key,
         get_hero_image(steamgriddb_api_key, game_id, steam_grid_path, appid)
         get_logo_image(steamgriddb_api_key, game_id, steam_grid_path, appid)
     except Exception as e:
-        print(f"An exception occurred getting images for Steam AppId {appid}: {e}")
+        pass
+        # print(f"An exception occurred getting images for Steam AppId {appid}: {e}")
 
 
 def get_logo_image(steamgriddb_api_key, gameid, steam_grid_path, appid):

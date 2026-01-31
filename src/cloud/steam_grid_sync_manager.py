@@ -17,7 +17,7 @@ class SteamGridSyncManager:
         self.reverse_non_steam_games = {value['CloudName']: key for key, value in non_steam_games.items() if 'CloudName' in value}
 
 
-    def upload_directory(self, local_dir):
+    def upload_directory(self, local_dir, progress=None, task_id=None):
         """
         Process all files in a local directory for upload.
         If the local directory does not exist, the function will exit gracefully.
@@ -32,11 +32,14 @@ class SteamGridSyncManager:
         self.cloud_manager.ensure_remote_folder(STEAM_GRID_SYNC_DIR)
         self.cloud_manager.ensure_remote_folder(NON_STEAM_DIR)
 
-        for filename in os.listdir(local_dir):
-            if filename.endswith('.log') or filename.startswith('.') or filename.lower() == 'desktop.ini':
-                continue
+        files_to_process = [f for f in os.listdir(local_dir) if not (f.endswith('.log') or f.startswith('.') or f.lower() == 'desktop.ini')]
+        
+        if progress and task_id:
+            progress.update(task_id, total=len(files_to_process))
 
-            print(f"Processing file: {filename}")
+        for filename in files_to_process:
+
+            # print(f"Processing file: {filename}")
             local_file = os.path.join(local_dir, filename)
             if not os.path.isfile(local_file):
                 continue  # Skip non-files (like subdirectories)
@@ -45,13 +48,15 @@ class SteamGridSyncManager:
             cloud_filename = f"{STEAM_GRID_SYNC_DIR}/{filename}"
             if self.non_steam_games.get(appid) is not None:
                 # Convert the filename for non-Steam games.
-                print(f"Found non-Steam game '{appid}' in the list.")
+                # print(f"Found non-Steam game '{appid}' in the list.")
                 cloud_filename = f"{NON_STEAM_DIR}/{self.non_steam_games[appid]['CloudName']}{postfix}{extension}"
 
             self.cloud_manager.upload_file(local_file, cloud_filename)
+            if progress and task_id:
+                progress.update(task_id, advance=1)
 
 
-    def download_steam_games_grid(self, local_dir):
+    def download_steam_games_grid(self, local_dir, progress=None, task_id=None):
         """
         Process all remote files in the Nextcloud folder for download.
         Assumes that self.api_proxy.list_remote_files() returns a dictionary
@@ -64,17 +69,24 @@ class SteamGridSyncManager:
         remote_files = self.cloud_manager.list_remote_files(f"{STEAM_GRID_SYNC_DIR}")
 
         # Process a subset if desired (here, we limit to the first 30 files)
-        for filename, remote_mod_time in list(remote_files.items()):
-            print(f"Processing remote file: {filename}")
+        remote_files_list = list(remote_files.items())
+
+        if progress and task_id:
+            progress.update(task_id, total=len(remote_files_list))
+
+        for filename, remote_mod_time in remote_files_list:
+            # print(f"Processing remote file: {filename}")
 
             local_file = os.path.join(local_dir, filename)
 
             cloud_filename = f"{STEAM_GRID_SYNC_DIR}/{filename}"
-            print(f"Downloading '{cloud_filename}' to '{local_file}'...")
+            # print(f"Downloading '{cloud_filename}' to '{local_file}'...")
             self.cloud_manager.download_file(cloud_filename, local_file)
+            if progress and task_id:
+                progress.update(task_id, advance=1)
 
 
-    def download_non_steam_games_grid(self, local_dir):
+    def download_non_steam_games_grid(self, local_dir, progress=None, task_id=None):
         """
         Download remote files for non-Steam games (shortcuts) that match the local non_steam_games list.
         
@@ -84,7 +96,11 @@ class SteamGridSyncManager:
         """
         remote_files = self.cloud_manager.list_remote_files(f"{NON_STEAM_DIR}")
 
-        for local_id, game_info in self.non_steam_games.items():
+        items_to_process = list(self.non_steam_games.items())
+        if progress and task_id:
+            progress.update(task_id, total=len(items_to_process))
+
+        for local_id, game_info in items_to_process:
             cloud_name = game_info.get('CloudName')
             if not cloud_name:
                 continue  # Skip if no CloudName is defined.
@@ -94,7 +110,8 @@ class SteamGridSyncManager:
                 if cloud_name not in filename:
                     continue
 
-                print(f"Found remote file '{filename}' for non-Steam game '{local_id}'.")
+                pass
+                # print(f"Found remote file '{filename}' for non-Steam game '{local_id}'.")
 
                 appid, postfix, extension = extract_appid_and_postfix(filename)
                 
@@ -105,7 +122,12 @@ class SteamGridSyncManager:
                 local_filename = f"{local_id}{postfix}{extension}"
                 local_file = os.path.join(local_dir, local_filename)
 
-                print(f"Downloading non-Steam game file '{filename}' to '{local_file}'...")
+                pass
+                # print(f"Downloading non-Steam game file '{filename}' to '{local_file}'...")
                 # Use NON_STEAM_DIR instead of STEAM_GRID_SYNC_DIR for the remote file path.
                 remote_file_path = f"{NON_STEAM_DIR}/{filename}"
+                remote_file_path = f"{NON_STEAM_DIR}/{filename}"
                 self.cloud_manager.download_file(remote_file_path, local_file)
+            
+            if progress and task_id:
+                progress.update(task_id, advance=1)

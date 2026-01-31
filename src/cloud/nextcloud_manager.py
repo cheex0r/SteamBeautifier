@@ -54,11 +54,14 @@ class NextcloudManager:
         remote_mod_time = self.api_proxy.get_remote_file_modtime(remote_file)
 
         if remote_mod_time is None:
-            print(f"Remote file '{remote_file}' does not exist. Uploading...")
+            pass
+            # print(f"Remote file '{remote_file}' does not exist. Uploading...")
         elif local_mod_time > remote_mod_time:
-            print(f"Local file '{local_file}' is newer. Uploading...")
+            pass
+            # print(f"Local file '{local_file}' is newer. Uploading...")
         else:
-            print(f"Skipping '{local_file}' as remote file is up-to-date.")
+            pass
+            # print(f"Skipping '{local_file}' as remote file is up-to-date.")
             return
 
         with open(local_file, 'rb') as f:
@@ -77,13 +80,13 @@ class NextcloudManager:
             local_file (str): The full path where the file should be saved locally.
         """
         # Combine the remote file path with the cloud folder.
-        print(f"Ensuring remote folder exists for '{remote_file}'...")
+        # print(f"Ensuring remote folder exists for '{remote_file}'...")
         remote_file_path = self._combine_folder(remote_file)
         
         # Get the remote file modification time.
         remote_mod_time = self.api_proxy.get_remote_file_modtime(remote_file_path)
         if remote_mod_time is None:
-            print(f"Remote file '{remote_file_path}' does not exist. Skipping download.")
+            # print(f"Remote file '{remote_file_path}' does not exist. Skipping download.")
             return
 
         # Check if the local file exists and get its modification time.
@@ -94,10 +97,11 @@ class NextcloudManager:
 
         # If the local file exists and is up-to-date, skip the download.
         if local_mod_time is not None and local_mod_time >= remote_mod_time:
-            print(f"Local file '{local_file}' is up-to-date. Skipping download.")
+            pass 
+            # print(f"Local file '{local_file}' is up-to-date. Skipping download.")
             return
 
-        print(f"Downloading '{remote_file_path}' to '{local_file}'...")
+        # print(f"Downloading '{remote_file_path}' to '{local_file}'...")
         # Download the file content.
         file_data = self.api_proxy.download_file(remote_file_path)
 

@@ -25,9 +25,9 @@ def extract_appid_and_postfix(filename):
         postfix = m.group(2) if m.group(2) else ""
         extension = m.group(3)
 
-        print(f"=================================")
-        print(f"Filename: {filename}")
-        print(f"Extracted appid: {appid}, postfix: {postfix}, extension: {extension}")
+        # print(f"=================================")
+        # print(f"Filename: {filename}")
+        # print(f"Extracted appid: {appid}, postfix: {postfix}, extension: {extension}")
 
         return appid, postfix, extension
     else:

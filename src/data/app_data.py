@@ -22,9 +22,11 @@ class AppData:
                 with open(file_path, 'r') as file:
                     return collection_type(json.load(file))
             except Exception as e:
-                print(f"An error occurred while reading the file {file_name}: {e}")
+                pass
+                # print(f"An error occurred while reading the file {file_name}: {e}")
         else:
-            print(f"File {file_name} does not exist.")
+            pass
+            # print(f"File {file_name} does not exist.")
         return collection_type()
     
     @classmethod

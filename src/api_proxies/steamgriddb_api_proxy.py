@@ -15,11 +15,14 @@ def get_gameid_from_steam_appid(api_key, steam_app_id):
             if game_id is not None:
                 return game_id
             else:
-                print(f"No game ID found for Steam app ID {steam_app_id}")
+                pass
+                # print(f"No game ID found for Steam app ID {steam_app_id}")
         else:
-            print(f"Failed to fetch images from SteamGridDB for app ID {steam_app_id}.")
+            pass
+            # print(f"Failed to fetch images from SteamGridDB for app ID {steam_app_id}.")
     else:
-        print(f"Failed to fetch images from SteamGridDB for app ID {steam_app_id}. Status code: {response.status_code}")
+        pass
+        # print(f"Failed to fetch images from SteamGridDB for app ID {steam_app_id}. Status code: {response.status_code}")
     return None
     
 def get_grid_url_from_gameid(api_key, game_id, dimensions='600x900'):
@@ -46,16 +49,19 @@ def get_url_from_data(api_key, url, game_id):
             try:
                 response_url = data.get('data', [])[0].get('url', None)  # Access grid URL safely
             except:
-                print(f"No images found {game_id}")
+                # print(f"No images found {game_id}")
                 return None
             if response_url is not None:
                 return response_url
             else:
-                print(f"No grid URL found for game ID {game_id}")
+                pass
+                # print(f"No grid URL found for game ID {game_id}")
         else:
-            print(f"Failed to fetch images from SteamGridDB for app ID {game_id}.")
+            pass
+            # print(f"Failed to fetch images from SteamGridDB for app ID {game_id}.")
     else:
-        print(f"Failed to fetch images from SteamGridDB for app ID {game_id}. Status code: {response.status_code}")
+        pass
+        # print(f"Failed to fetch images from SteamGridDB for app ID {game_id}. Status code: {response.status_code}")
     return None
 
 if __name__ == "__main__":

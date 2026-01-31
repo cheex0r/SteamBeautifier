@@ -28,10 +28,11 @@ def get_modified_steam_css(data):
 
 def remove_whats_new():
     file = os.path.join(get_steam_path(), *paths)
-    print('Modifying %s', file)
+    # print('Modifying %s', file)
     try:
         if not os.path.exists(file):
-            print("File '{}' does not exist.".format(file))
+            pass
+            # print("File '{}' does not exist.".format(file))
             exit()
 
         # Remove the read-only attribute from the file
@@ -45,7 +46,8 @@ def remove_whats_new():
 
         with open(file, 'wb') as f:
             f.write(modified_data.encode('utf-8'))
-            print("Successfully modified '{}'.".format(file))
+            pass
+            # print("Successfully modified '{}'.".format(file))
     except Exception as e:
         print(e)
 

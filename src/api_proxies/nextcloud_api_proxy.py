@@ -54,21 +54,23 @@ class NextcloudApiProxy:
                 # 405 Method Not Allowed often means it was created by another process
                 # between our PROPFIND and MKCOL calls (a race condition), so we treat it as success.
                 if mkcol_response.status_code in (201, 405):
-                    print(f"Folder '{current_path}' created successfully.")
+                    pass
+                    # print(f"Folder '{current_path}' created successfully.")
                 else:
-                    print(f"Failed to create folder '{current_path}': {mkcol_response.status_code} {mkcol_response.text}")
+                    # print(f"Failed to create folder '{current_path}': {mkcol_response.status_code} {mkcol_response.text}")
                     # You might want to raise an exception here to stop the script
-                    raise Exception(f"Failed to create folder '{current_path}'")
+                    raise Exception(f"Failed to create folder '{current_path}': {mkcol_response.status_code}")
             
             # 200 or 207 means it already exists.
             elif response.status_code in (200, 207):
-                print(f"Folder '{current_path}' already exists.")
+                pass
+                # print(f"Folder '{current_path}' already exists.")
             
             # Handle other unexpected errors
             else:
-                print(f"Unexpected response ({response.status_code}) when checking folder '{current_path}'.")
-                print(response.text)
-                raise Exception(f"Failed to check/create folder '{current_path}'")
+                # print(f"Unexpected response ({response.status_code}) when checking folder '{current_path}'.")
+                # print(response.text)
+                raise Exception(f"Failed to check/create folder '{current_path}': {response.status_code}")
 
 
     def get_remote_file_modtime(self, remote_file):
@@ -93,7 +95,7 @@ class NextcloudApiProxy:
         elif response.status_code == 404:
             return None
         else:
-            print(f"Unexpected PROPFIND response for {remote_url}: {response.status_code} - {response.text}")
+            # print(f"Unexpected PROPFIND response for {remote_url}: {response.status_code} - {response.text}")
             return None
 
 
@@ -107,8 +109,10 @@ class NextcloudApiProxy:
         response = requests.request('PROPFIND', folder_url, auth=self.auth, headers=headers)
         files = {}
         if response.status_code not in [200, 207]:
-            print(f"Failed to list remote files in '{remote_folder}': {response.status_code} {response.text}")
-            return files
+            # print(f"Failed to list remote files in '{remote_folder}': {response.status_code} {response.text}")
+            if response.status_code == 401:
+                raise Exception("Authentication failed (401). Check credentials.")
+            raise Exception(f"Failed to list files: {response.status_code}")
         try:
             root = ET.fromstring(response.content)
             ns = {'d': 'DAV:'}
@@ -154,7 +158,7 @@ class NextcloudApiProxy:
             if response.status_code in [200, 201, 204]:
                 print(f"Uploaded successfully to {remote_url}")
             else:
-                print(f"Failed to upload. Status: {response.status_code} - {response.text}")
+                raise Exception(f"Failed to upload. Status: {response.status_code}")
         except Exception as e:
             print(f"Error uploading: {e}")
 
@@ -176,6 +180,6 @@ class NextcloudApiProxy:
                 print(f"File not found: {remote_url}")
                 return None
             else:
-                print(f"Failed to download. Status: {response.status_code} - {response.text}")
+                raise Exception(f"Failed to download. Status: {response.status_code}")
         except Exception as e:
             print(f"Error downloading: {e}")
