@@ -42,6 +42,12 @@ If you prefer to run *Steam Beautifier* directly as a Python app, make sure you 
    git clone https://github.com/cheex0r/SteamBeautifier.git
    cd  SteamBeautifier
 
+## Building
+
+### Windows Executable
+
+`pyinstaller --onefile --paths=src --add-data "config_schema.json;." --distpath "installer/windows/dist" src/main.py --name steam_beautifier`
+
 ## Usage
 
 Upon first launch, *Steam Beautifier* will guide you through a configuration process using a simple GUI. This setup allows you to customize how the utility operates and what features you’d like to enable.
