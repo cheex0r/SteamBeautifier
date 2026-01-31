@@ -111,7 +111,8 @@ class NextcloudApiProxy:
         response = self.session.request('PROPFIND', folder_url, headers=headers)
         files = {}
         if response.status_code not in [200, 207]:
-            # print(f"Failed to list remote files in '{remote_folder}': {response.status_code} {response.text}")
+            if response.status_code == 404:
+                return {} # Folder doesn't exist, so it's empty
             if response.status_code == 401:
                 raise Exception("Authentication failed (401). Check credentials.")
             raise Exception(f"Failed to list files: {response.status_code}")

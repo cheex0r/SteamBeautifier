@@ -39,7 +39,7 @@ class SteamGridSyncManager:
 
         files_to_process = [f for f in os.listdir(local_dir) if not (f.endswith('.log') or f.startswith('.') or f.lower() == 'desktop.ini')]
         
-        if progress and task_id:
+        if progress and task_id and len(files_to_process) > 0:
             current_total = 0
             for task in progress.tasks:
                 if task.id == task_id:
@@ -85,7 +85,7 @@ class SteamGridSyncManager:
         # Process a subset if desired (here, we limit to the first 30 files)
         remote_files_list = list(remote_files.items())
 
-        if progress and task_id:
+        if progress and task_id and len(remote_files_list) > 0:
             current_total = 0
             for task in progress.tasks:
                 if task.id == task_id:
@@ -117,7 +117,7 @@ class SteamGridSyncManager:
         remote_files = self.cloud_manager.list_remote_files(f"{NON_STEAM_DIR}")
 
         items_to_process = list(self.non_steam_games.items())
-        if progress and task_id:
+        if progress and task_id and len(items_to_process) > 0:
             current_total = 0
             for task in progress.tasks:
                 if task.id == task_id:

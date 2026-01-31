@@ -20,19 +20,22 @@ from rich.panel import Panel
 from rich.text import Text
 
 HEADER = r"""
-
- @@@@@@ @@@@@@@ @@@@@@@@  @@@@@@  @@@@@@@@@@                                  
-!@@       @@!   @@!      @@!  @@@ @@! @@! @@!                                 
- !@@!!    @!!   @!!!:!   @!@!@!@! @!! !!@ @!@                                 
-    !:!   !!:   !!:      !!:  !!! !!:     !!:                                 
-::.: :     :    : :: :::  :   : :  :      :                                   
-                                                                              
-@@@@@@@  @@@@@@@@  @@@@@@  @@@  @@@ @@@@@@@ @@@ @@@@@@@@ @@@ @@@@@@@@ @@@@@@@ 
-@@!  @@@ @@!      @@!  @@@ @@!  @@@   @@!   @@! @@!      @@! @@!      @@!  @@@
-@!@!@!@  @!!!:!   @!@!@!@! @!@  !@!   @!!   !!@ @!!!:!   !!@ @!!!:!   @!@!!@! 
-!!:  !!! !!:      !!:  !!! !!:  !!!   !!:   !!: !!:      !!: !!:      !!: :!! 
-:: : ::  : :: :::  :   : :  :.:: :     :    :    :       :   : :: :::  :   : :
-
+ ____    __                                                             
+/\  _`\ /\ \__                                                          
+\ \,\L\_\ \ ,_\    __     __      ___ ___                               
+ \/_\__ \\ \ \/  /'__`\ /'__`\  /' __` __`\                             
+   /\ \L\ \ \ \_/\  __//\ \L\.\_/\ \/\ \/\ \                            
+   \ `\____\ \__\ \____\ \__/.\_\ \_\ \_\ \_\                           
+    \/_____/\/__/\/____/\/__/\/_/\/_/\/_/\/_/                           
+                                                                        
+                                                                        
+ ____                              __           ___                     
+/\  _`\                           /\ \__  __  /'___\ __                 
+\ \ \L\ \     __     __     __  __\ \ ,_\/\_\/\ \__//\_\     __   _ __  
+ \ \  _ <'  /'__`\ /'__`\  /\ \/\ \\ \ \/\/\ \ \ ,__\/\ \  /'__`\/\`'__\
+  \ \ \L\ \/\  __//\ \L\.\_\ \ \_\ \\ \ \_\ \ \ \ \_/\ \ \/\  __/\ \ \/ 
+   \ \____/\ \____\ \__/.\_\\ \____/ \ \__\\ \_\ \_\  \ \_\ \____\\ \_\ 
+    \/___/  \/____/\/__/\/_/ \/___/   \/__/ \/_/\/_/   \/_/\/____/ \/_/                                                        
 """
 
 console = Console()
@@ -72,7 +75,7 @@ def main():
         for steam_id in steam_ids: 
             user_task = progress.add_task(f"[bold blue]Processing User: {steam_id.get_steamid()}", total=None)
             _run_task_for_user(config, steam_path, steam_id, progress)
-            progress.update(user_task, completed=100, visible=False)
+            progress.update(user_task, completed=100) # Keep visible so we know which user was processed
 
         if config['launch'] or config['bigpicture']:
             launch_task = progress.add_task("[yellow]Launching Steam...", total=None)
@@ -112,11 +115,19 @@ def _run_task_for_user(config, steam_path, steam_id: SteamId, progress):
             sync_manager.download_non_steam_games_grid(local_grid_file_path, progress=progress, task_id=sync_id)
             
             # Ensure bar looks complete even if 0 files
+            # Ensure bar looks complete even if 0 files
+            final_total = None
+            final_completed = None
             for task in progress.tasks:
                 if task.id == sync_id and (task.total is None or task.total == 0):
-                    progress.update(sync_id, total=1, completed=1)
-
-            progress.update(sync_id, description="[green]☁️  Nextcloud: Download complete")
+                    final_total = 1
+                    final_completed = 1
+            
+            p_kwargs = {"description": "[green]☁️  Nextcloud: Download complete"}
+            if final_total:
+                p_kwargs["total"] = final_total
+                p_kwargs["completed"] = final_completed
+            progress.update(sync_id, **p_kwargs)
         except Exception as e:
             progress.console.print(f"[red]Nextcloud download error: {e}[/red]")
     
@@ -127,7 +138,21 @@ def _run_task_for_user(config, steam_path, steam_id: SteamId, progress):
             non_steam_games,
             progress=progress,
             task_id=down_task)
-        progress.update(down_task, description="[green]☁️  Dropbox: Download complete", visible=True)
+        
+        # Ensure bar looks complete even if 0 files
+        # Ensure bar looks complete even if 0 files
+        final_total = None
+        final_completed = None
+        for task in progress.tasks:
+            if task.id == down_task and (task.total is None or task.total == 0):
+                final_total = 1
+                final_completed = 1
+
+        p_kwargs = {"description": "[green]☁️  Dropbox: Download complete", "visible": True}
+        if final_total:
+            p_kwargs["total"] = final_total
+            p_kwargs["completed"] = final_completed
+        progress.update(down_task, **p_kwargs)
 
     # 2. Fetch Missing Art (SteamGridDB)
     if config['download-images']:
@@ -137,7 +162,21 @@ def _run_task_for_user(config, steam_path, steam_id: SteamId, progress):
                                 steam_id,
                                 progress=progress,
                                 task_id=img_task)
-        progress.update(img_task, description="[green]🎨 Art download complete", visible=True)
+        
+        # Ensure bar looks complete even if 0 files
+        # Ensure bar looks complete even if 0 files
+        final_total = None
+        final_completed = None
+        for task in progress.tasks:
+            if task.id == img_task and (task.total is None or task.total == 0):
+                final_total = 1
+                final_completed = 1
+
+        p_kwargs = {"description": "[green]☁️  Art: Download complete", "visible": True}
+        if final_total:
+            p_kwargs["total"] = final_total
+            p_kwargs["completed"] = final_completed
+        progress.update(img_task, **p_kwargs)
 
     # 3. Cloud Upload (Sync Up)
     if dropbox_manager:
@@ -149,13 +188,40 @@ def _run_task_for_user(config, steam_path, steam_id: SteamId, progress):
             task_id=up_task)
         dropbox_manifest_file_manager.save_file(dropbox_manager.get_manifest())
         dropbox_manager.upload_manifest()
-        progress.update(up_task, description="[green]☁️  Dropbox: Upload complete", visible=True)
+        
+         # Ensure bar looks complete even if 0 files
+         # Ensure bar looks complete even if 0 files
+        final_total = None
+        final_completed = None
+        for task in progress.tasks:
+            if task.id == up_task and (task.total is None or task.total == 0):
+                final_total = 1
+                final_completed = 1
+        
+        p_kwargs = {"description": "[green]☁️  Dropbox: Upload complete", "visible": True}
+        if final_total:
+            p_kwargs["total"] = final_total
+            p_kwargs["completed"] = final_completed
+        progress.update(up_task, **p_kwargs)
     
     if sync_manager:
         sync_up_task = progress.add_task("☁️  Nextcloud: Syncing to cloud...", total=None)
         try:
             sync_manager.upload_directory(local_grid_file_path, progress=progress, task_id=sync_up_task)
-            progress.update(sync_up_task, description="[green]☁️  Nextcloud: Upload complete")
+            
+             # Ensure bar looks complete even if 0 files
+            final_total = None
+            final_completed = None
+            for task in progress.tasks:
+                if task.id == sync_up_task and (task.total is None or task.total == 0):
+                    final_total = 1
+                    final_completed = 1
+
+            p_kwargs = {"description": "[green]☁️  Nextcloud: Upload complete"}
+            if final_total:
+                p_kwargs["total"] = final_total
+                p_kwargs["completed"] = final_completed
+            progress.update(sync_up_task, **p_kwargs)
         except Exception as e:
             progress.console.print(f"[red]Nextcloud upload error: {e}[/red]")
             progress.update(sync_up_task, description="[red]☁️  Nextcloud: Upload failed")
