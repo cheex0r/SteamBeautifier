@@ -56,7 +56,7 @@ class NextcloudManager:
         if remote_mod_time is None:
             pass
             # print(f"Remote file '{remote_file}' does not exist. Uploading...")
-        elif local_mod_time > remote_mod_time:
+        elif local_mod_time > remote_mod_time + 2:
             pass
             # print(f"Local file '{local_file}' is newer. Uploading...")
         else:
