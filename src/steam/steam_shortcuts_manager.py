@@ -43,8 +43,11 @@ def parse_shortcuts_vdf(steam_dir, steam_id: SteamId):
     file_path = get_shortcuts_vdf_path_from_steamid(steam_dir, steam_id)
     apps_info = {}
     
-    with open(file_path, 'rb') as f:
-        data = vdf.binary_load(f)
+    try:
+        with open(file_path, 'rb') as f:
+            data = vdf.binary_load(f)
+    except FileNotFoundError:
+        return {}
         
     shortcuts = data.get('shortcuts', {})
     
