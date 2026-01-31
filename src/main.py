@@ -20,12 +20,19 @@ from rich.panel import Panel
 from rich.text import Text
 
 HEADER = r"""
-   _____ __                            ____                  __  _
-  / ___// /____  ____ _____ ___       / __ )___  ____ ___  / /_(_)
-  \__ \/ __/ _ \/ __ `/ __ `__ \     / __  / _ \/ __ `/ / / / __/
- ___/ / /_/  __/ /_/ / / / / / /    / /_/ /  __/ /_/ / /_/ / /_
-/____/\__/\___/\__,_/_/ /_/ /_/____/_____/\___/\__,_/\__,_/\__/
-                             /_____/
+
+ @@@@@@ @@@@@@@ @@@@@@@@  @@@@@@  @@@@@@@@@@                                  
+!@@       @@!   @@!      @@!  @@@ @@! @@! @@!                                 
+ !@@!!    @!!   @!!!:!   @!@!@!@! @!! !!@ @!@                                 
+    !:!   !!:   !!:      !!:  !!! !!:     !!:                                 
+::.: :     :    : :: :::  :   : :  :      :                                   
+                                                                              
+@@@@@@@  @@@@@@@@  @@@@@@  @@@  @@@ @@@@@@@ @@@ @@@@@@@@ @@@ @@@@@@@@ @@@@@@@ 
+@@!  @@@ @@!      @@!  @@@ @@!  @@@   @@!   @@! @@!      @@! @@!      @@!  @@@
+@!@!@!@  @!!!:!   @!@!@!@! @!@  !@!   @!!   !!@ @!!!:!   !!@ @!!!:!   @!@!!@! 
+!!:  !!! !!:      !!:  !!! !!:  !!!   !!:   !!: !!:      !!: !!:      !!: :!! 
+:: : ::  : :: :::  :   : :  :.:: :     :    :    :       :   : :: :::  :   : :
+
 """
 
 console = Console()
@@ -102,8 +109,14 @@ def _run_task_for_user(config, steam_path, steam_id: SteamId, progress):
         sync_id = progress.add_task("☁️  Nextcloud: Syncing from cloud...", total=None)
         try:
             sync_manager.download_steam_games_grid(local_grid_file_path, progress=progress, task_id=sync_id)
-            sync_manager.download_non_steam_games_grid(local_grid_file_path) # Intentionally not passing progress yet as it overlaps with same bar or needs new one? Let's check logic.
-            progress.update(sync_id, description="[green]☁️  Nextcloud: Download complete", completed=100)
+            sync_manager.download_non_steam_games_grid(local_grid_file_path, progress=progress, task_id=sync_id)
+            
+            # Ensure bar looks complete even if 0 files
+            for task in progress.tasks:
+                if task.id == sync_id and (task.total is None or task.total == 0):
+                    progress.update(sync_id, total=1, completed=1)
+
+            progress.update(sync_id, description="[green]☁️  Nextcloud: Download complete")
         except Exception as e:
             progress.console.print(f"[red]Nextcloud download error: {e}[/red]")
     
@@ -142,10 +155,10 @@ def _run_task_for_user(config, steam_path, steam_id: SteamId, progress):
         sync_up_task = progress.add_task("☁️  Nextcloud: Syncing to cloud...", total=None)
         try:
             sync_manager.upload_directory(local_grid_file_path, progress=progress, task_id=sync_up_task)
-            progress.update(sync_up_task, description="[green]☁️  Nextcloud: Upload complete", completed=100)
+            progress.update(sync_up_task, description="[green]☁️  Nextcloud: Upload complete")
         except Exception as e:
             progress.console.print(f"[red]Nextcloud upload error: {e}[/red]")
-            progress.update(sync_up_task, description="[red]☁️  Nextcloud: Upload failed", completed=100)
+            progress.update(sync_up_task, description="[red]☁️  Nextcloud: Upload failed")
 
 
 def _get_dropbox_manager(config, steam_id, dropbox_manifest, console):
