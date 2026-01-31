@@ -33,6 +33,10 @@ class SteamGridSyncManager:
         self.cloud_manager.ensure_remote_folder(STEAM_GRID_SYNC_DIR)
         self.cloud_manager.ensure_remote_folder(NON_STEAM_DIR)
 
+        # Pre-fetch remote file lists to avoid N*PROPFIND requests
+        steam_remote_files = self.cloud_manager.list_remote_files(STEAM_GRID_SYNC_DIR)
+        non_steam_remote_files = self.cloud_manager.list_remote_files(NON_STEAM_DIR)
+
         files_to_process = [f for f in os.listdir(local_dir) if not (f.endswith('.log') or f.startswith('.') or f.lower() == 'desktop.ini')]
         
         if progress and task_id:
@@ -50,10 +54,14 @@ class SteamGridSyncManager:
             appid, postfix, extension = extract_appid_and_postfix(filename)
             
             cloud_filename = f"{STEAM_GRID_SYNC_DIR}/{filename}"
-            if self.non_steam_games.get(appid) is not None:
-                cloud_filename = f"{NON_STEAM_DIR}/{self.non_steam_games[appid]['CloudName']}{postfix}{extension}"
+            remote_mod_time = steam_remote_files.get(filename)
 
-            self.cloud_manager.upload_file(local_file, cloud_filename)
+            if self.non_steam_games.get(appid) is not None:
+                new_filename = f"{self.non_steam_games[appid]['CloudName']}{postfix}{extension}"
+                cloud_filename = f"{NON_STEAM_DIR}/{new_filename}"
+                remote_mod_time = non_steam_remote_files.get(new_filename)
+
+            self.cloud_manager.upload_file(local_file, cloud_filename, remote_mod_time=remote_mod_time)
 
         with concurrent.futures.ThreadPoolExecutor() as executor:
             futures = [executor.submit(process_upload, f) for f in files_to_process]

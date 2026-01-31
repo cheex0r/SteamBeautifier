@@ -40,7 +40,7 @@ class NextcloudManager:
         self.api_proxy.ensure_remote_folder(remote_folder)
 
 
-    def upload_file(self, local_file, remote_file):
+    def upload_file(self, local_file, remote_file, remote_mod_time=-1.0):
         """
         Upload a single file to Nextcloud if newer than the remote version or if the remote file doesn't exist.
         This method checks the modification time of the local file against the remote file.
@@ -48,10 +48,14 @@ class NextcloudManager:
         Args:
             local_file (str): The path to the local file.
             remote_file (str): The remote file path, including the folder and file name.
+            remote_mod_time (float, optional): Known remote modification time (or None if missing). 
+                                               Defaults to -1.0, which forces a lookup.
         """
         remote_file = self._combine_folder(remote_file)
         local_mod_time = os.path.getmtime(local_file)
-        remote_mod_time = self.api_proxy.get_remote_file_modtime(remote_file)
+        
+        if remote_mod_time == -1.0:
+            remote_mod_time = self.api_proxy.get_remote_file_modtime(remote_file)
 
         if remote_mod_time is None:
             pass
