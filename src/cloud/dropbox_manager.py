@@ -5,7 +5,7 @@ import json
 import os
 import requests
 import time
-from tqdm import tqdm
+
 
 from dropbox.files import WriteMode
 from dropbox.exceptions import AuthError
@@ -31,7 +31,7 @@ class DropboxManager:
         self.remote_manifest = self._download_manifest()
 
 
-    def download_newer_files(self, local_folder, non_steam_games={}):
+    def download_newer_files(self, local_folder, non_steam_games={}, progress=None, task_id=None):
         access_token = self._get_access_token()
         if not access_token:
             print("Dropbox access token not found. Please authenticate first.")
@@ -45,11 +45,11 @@ class DropboxManager:
         # Rekey the non-Steam games dictionary to use the name as the key
         non_steam_games = {self._hash_game_name(game['AppName']): game for game in non_steam_games.values()}
 
-        self._download_newer_files_for_category(access_token, local_folder, self.dropbox_folder_path,           non_steam_games, is_steam=True)
-        self._download_newer_files_for_category(access_token, local_folder, self.dropbox_folder_path_non_steam, non_steam_games, is_steam=False)
+        self._download_newer_files_for_category(access_token, local_folder, self.dropbox_folder_path,           non_steam_games, is_steam=True, progress=progress, task_id=task_id)
+        self._download_newer_files_for_category(access_token, local_folder, self.dropbox_folder_path_non_steam, non_steam_games, is_steam=False, progress=progress, task_id=task_id)
 
 
-    def upload_newer_files(self, local_folder, non_steam_games={}):
+    def upload_newer_files(self, local_folder, non_steam_games={}, progress=None, task_id=None):
         access_token = self._get_access_token()
         if not access_token:
             print("Dropbox access token not found. Please authenticate first.")
@@ -68,8 +68,8 @@ class DropboxManager:
             elif len(game_id) < 10: # Skip stale images to old shortcuts
                 steam_app_files.append(file)
 
-        self._upload_newer_files(access_token, local_folder, steam_app_files, self.dropbox_folder_path)
-        self._upload_newer_files(access_token, local_folder, non_steam_app_files, self.dropbox_folder_path_non_steam, non_steam_games)
+        self._upload_newer_files(access_token, local_folder, steam_app_files, self.dropbox_folder_path, progress=progress, task_id=task_id)
+        self._upload_newer_files(access_token, local_folder, non_steam_app_files, self.dropbox_folder_path_non_steam, non_steam_games, progress=progress, task_id=task_id)
 
 
     def get_manifest(self):
@@ -136,7 +136,7 @@ class DropboxManager:
             return None
 
 
-    def _download_newer_files_for_category(self, access_token, local_folder, dropbox_folder_path, non_steam_games, is_steam):       
+    def _download_newer_files_for_category(self, access_token, local_folder, dropbox_folder_path, non_steam_games, is_steam, progress=None, task_id=None):       
         self.remote_manifest = self._download_manifest()
         dbx = dropbox.Dropbox(access_token)
 
@@ -158,7 +158,7 @@ class DropboxManager:
                 local_file_path = os.path.join(local_folder, local_file_name)
 
                 if not os.path.isfile(local_file_path) or self._calculate_dropbox_content_hash(local_file_path) != dropbox_file_hash:
-                    tqdm.write(f"Downloading from Dropbox {dropbox_file_path} to {local_file_path}")
+                    # print(f"Downloading from Dropbox {dropbox_file_path} to {local_file_path}") # Optional logging
                     self._download_file_from_dropbox_to_file(access_token, dropbox_folder_path + '/' + dropbox_file_name, local_file_path)
                     if self.local_manifest.get(dropbox_file_path) is None:
                         self.local_manifest[dropbox_file_path] = {}
@@ -166,11 +166,16 @@ class DropboxManager:
                     self.local_manifest[dropbox_file_path]['timestamp'] = self.remote_manifest[dropbox_file_path]['timestamp']
                     return 1
                 return 0
+            if progress and task_id:
+                progress.update(task_id, total=len(dropbox_file_metadata))
+
             with concurrent.futures.ThreadPoolExecutor() as executor:
-                num_downloads = sum(
-                    tqdm(executor.map(lambda item: process_file(item[0], item[1]), dropbox_file_metadata.items()),
-                         total=len(dropbox_file_metadata),
-                         desc="Downloading files from Dropbox"))
+                futures = [executor.submit(process_file, item[0], item[1]) for item in dropbox_file_metadata.items()]
+                num_downloads = 0
+                for future in concurrent.futures.as_completed(futures):
+                    num_downloads += future.result()
+                    if progress and task_id:
+                         progress.update(task_id, advance=1)
             print(f"Downloaded {num_downloads} files from Dropbox")
 
         except dropbox.exceptions.ApiError as e:
@@ -273,7 +278,7 @@ class DropboxManager:
             return None
         
 
-    def _upload_newer_files(self, access_token, local_folder, files, dbx_folder, non_steam_games={}):
+    def _upload_newer_files(self, access_token, local_folder, files, dbx_folder, non_steam_games={}, progress=None, task_id=None):
         dbx = dropbox.Dropbox(access_token)
         total_files = len(files)
 
@@ -297,13 +302,21 @@ class DropboxManager:
                 if os.path.isfile(local_file_path):
                     local_file_hash = self._calculate_dropbox_content_hash(local_file_path)
                     if dbx_filename not in dropbox_file_hashes or local_file_hash != dropbox_file_hashes[dbx_filename]:
-                        tqdm.write(f"Uploading {local_file_path} to Dropbox {dbx_filepath}")
+                        # print(f"Uploading {local_file_path} to Dropbox {dbx_filepath}") # Optional logging
                         self._upload_local_file_to_dropbox(access_token, local_file_path, dbx_folder, dbx_filename)
                         return 1
                 return 0
             
+            if progress and task_id:
+                progress.update(task_id, total=total_files)
+
             with concurrent.futures.ThreadPoolExecutor() as executor:
-                num_uploaded = sum(tqdm(executor.map(process_file, files), total=total_files, desc="Uploading files to Dropbox"))
+                futures = [executor.submit(process_file, f) for f in files]
+                num_uploaded = 0
+                for future in concurrent.futures.as_completed(futures):
+                    num_uploaded += future.result()
+                    if progress and task_id:
+                        progress.update(task_id, advance=1)
             print(f"Uploaded {num_uploaded} files to Dropbox")
 
 

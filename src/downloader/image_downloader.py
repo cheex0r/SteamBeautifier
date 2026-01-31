@@ -13,9 +13,11 @@ def save_image_as_png(url, filename):
             image = Image.open(image_data)
             image.save(filename, format='PNG')
         else:
-            print(f"Failed to download image from {url}. Status code: {response.status_code}")
+            pass
+            # print(f"Failed to download image from {url}. Status code: {response.status_code}")
     except Exception as e:
-        print(f"Error occurred while saving image: {e}")
+        pass
+        # print(f"Error occurred while saving image: {e}")
 
 
 if __name__ == "__main__":

@@ -19,6 +19,8 @@ class NextcloudApiProxy:
         self.base_url = base_url.rstrip('/')
         self.username = username
         self.auth = (username, password)
+        self.session = requests.Session()
+        self.session.auth = self.auth
 
 
     def _get_remote_url(self, remote_path):
@@ -43,32 +45,34 @@ class NextcloudApiProxy:
             folder_url = self._get_remote_url(current_path)
             
             # Check if the collection exists
-            response = requests.request('PROPFIND', folder_url, auth=self.auth, headers={'Depth': '0'})
+            response = self.session.request('PROPFIND', folder_url, headers={'Depth': '0'})
 
             # 404 means it doesn't exist, so we need to create it.
             if response.status_code == 404:
                 print(f"Folder '{current_path}' does not exist. Creating it...")
-                mkcol_response = requests.request('MKCOL', folder_url, auth=self.auth)
+                mkcol_response = self.session.request('MKCOL', folder_url)
                 
                 # 201 Created is success.
                 # 405 Method Not Allowed often means it was created by another process
                 # between our PROPFIND and MKCOL calls (a race condition), so we treat it as success.
                 if mkcol_response.status_code in (201, 405):
-                    print(f"Folder '{current_path}' created successfully.")
+                    pass
+                    # print(f"Folder '{current_path}' created successfully.")
                 else:
-                    print(f"Failed to create folder '{current_path}': {mkcol_response.status_code} {mkcol_response.text}")
+                    # print(f"Failed to create folder '{current_path}': {mkcol_response.status_code} {mkcol_response.text}")
                     # You might want to raise an exception here to stop the script
-                    raise Exception(f"Failed to create folder '{current_path}'")
+                    raise Exception(f"Failed to create folder '{current_path}': {mkcol_response.status_code}")
             
             # 200 or 207 means it already exists.
             elif response.status_code in (200, 207):
-                print(f"Folder '{current_path}' already exists.")
+                pass
+                # print(f"Folder '{current_path}' already exists.")
             
             # Handle other unexpected errors
             else:
-                print(f"Unexpected response ({response.status_code}) when checking folder '{current_path}'.")
-                print(response.text)
-                raise Exception(f"Failed to check/create folder '{current_path}'")
+                # print(f"Unexpected response ({response.status_code}) when checking folder '{current_path}'.")
+                # print(response.text)
+                raise Exception(f"Failed to check/create folder '{current_path}': {response.status_code}")
 
 
     def get_remote_file_modtime(self, remote_file):
@@ -78,7 +82,7 @@ class NextcloudApiProxy:
         """
         headers = {'Depth': '0'}
         remote_url = self._get_remote_url(remote_file)
-        response = requests.request('PROPFIND', remote_url, auth=self.auth, headers=headers)
+        response = self.session.request('PROPFIND', remote_url, headers=headers)
         if response.status_code in [200, 207]:
             try:
                 root = ET.fromstring(response.content)
@@ -93,7 +97,7 @@ class NextcloudApiProxy:
         elif response.status_code == 404:
             return None
         else:
-            print(f"Unexpected PROPFIND response for {remote_url}: {response.status_code} - {response.text}")
+            # print(f"Unexpected PROPFIND response for {remote_url}: {response.status_code} - {response.text}")
             return None
 
 
@@ -104,11 +108,14 @@ class NextcloudApiProxy:
         """
         folder_url = self._get_remote_url(remote_folder)
         headers = {'Depth': '1'}
-        response = requests.request('PROPFIND', folder_url, auth=self.auth, headers=headers)
+        response = self.session.request('PROPFIND', folder_url, headers=headers)
         files = {}
         if response.status_code not in [200, 207]:
-            print(f"Failed to list remote files in '{remote_folder}': {response.status_code} {response.text}")
-            return files
+            if response.status_code == 404:
+                return {} # Folder doesn't exist, so it's empty
+            if response.status_code == 401:
+                raise Exception("Authentication failed (401). Check credentials.")
+            raise Exception(f"Failed to list files: {response.status_code}")
         try:
             root = ET.fromstring(response.content)
             ns = {'d': 'DAV:'}
@@ -150,11 +157,11 @@ class NextcloudApiProxy:
         remote_url = self._get_remote_url(remote_file)
         
         try:
-            response = requests.put(remote_url, data=file_contents, auth=self.auth)
-            if response.status_code in [200, 201, 204]:
-                print(f"Uploaded successfully to {remote_url}")
-            else:
-                print(f"Failed to upload. Status: {response.status_code} - {response.text}")
+            response = self.session.put(remote_url, data=file_contents)
+            # if response.status_code in [200, 201, 204]:
+            #     print(f"Uploaded successfully to {remote_url}")
+            if response.status_code not in [200, 201, 204]:
+                raise Exception(f"Failed to upload. Status: {response.status_code}")
         except Exception as e:
             print(f"Error uploading: {e}")
 
@@ -169,13 +176,13 @@ class NextcloudApiProxy:
         """
         remote_url = self._get_remote_url(remote_file)
         try:
-            response = requests.get(remote_url, auth=self.auth)
+            response = self.session.get(remote_url)
             if response.status_code == 200:
                 return response.content
             elif response.status_code == 404:
                 print(f"File not found: {remote_url}")
                 return None
             else:
-                print(f"Failed to download. Status: {response.status_code} - {response.text}")
+                raise Exception(f"Failed to download. Status: {response.status_code}")
         except Exception as e:
             print(f"Error downloading: {e}")

@@ -40,7 +40,7 @@ class NextcloudManager:
         self.api_proxy.ensure_remote_folder(remote_folder)
 
 
-    def upload_file(self, local_file, remote_file):
+    def upload_file(self, local_file, remote_file, remote_mod_time=-1.0):
         """
         Upload a single file to Nextcloud if newer than the remote version or if the remote file doesn't exist.
         This method checks the modification time of the local file against the remote file.
@@ -48,17 +48,24 @@ class NextcloudManager:
         Args:
             local_file (str): The path to the local file.
             remote_file (str): The remote file path, including the folder and file name.
+            remote_mod_time (float, optional): Known remote modification time (or None if missing). 
+                                               Defaults to -1.0, which forces a lookup.
         """
         remote_file = self._combine_folder(remote_file)
         local_mod_time = os.path.getmtime(local_file)
-        remote_mod_time = self.api_proxy.get_remote_file_modtime(remote_file)
+        
+        if remote_mod_time == -1.0:
+            remote_mod_time = self.api_proxy.get_remote_file_modtime(remote_file)
 
         if remote_mod_time is None:
-            print(f"Remote file '{remote_file}' does not exist. Uploading...")
-        elif local_mod_time > remote_mod_time:
-            print(f"Local file '{local_file}' is newer. Uploading...")
+            pass
+            # print(f"Remote file '{remote_file}' does not exist. Uploading...")
+        elif local_mod_time > remote_mod_time + 2:
+            pass
+            # print(f"Local file '{local_file}' is newer. Uploading...")
         else:
-            print(f"Skipping '{local_file}' as remote file is up-to-date.")
+            pass
+            # print(f"Skipping '{local_file}' as remote file is up-to-date.")
             return
 
         with open(local_file, 'rb') as f:
@@ -77,13 +84,13 @@ class NextcloudManager:
             local_file (str): The full path where the file should be saved locally.
         """
         # Combine the remote file path with the cloud folder.
-        print(f"Ensuring remote folder exists for '{remote_file}'...")
+        # print(f"Ensuring remote folder exists for '{remote_file}'...")
         remote_file_path = self._combine_folder(remote_file)
         
         # Get the remote file modification time.
         remote_mod_time = self.api_proxy.get_remote_file_modtime(remote_file_path)
         if remote_mod_time is None:
-            print(f"Remote file '{remote_file_path}' does not exist. Skipping download.")
+            # print(f"Remote file '{remote_file_path}' does not exist. Skipping download.")
             return
 
         # Check if the local file exists and get its modification time.
@@ -94,10 +101,11 @@ class NextcloudManager:
 
         # If the local file exists and is up-to-date, skip the download.
         if local_mod_time is not None and local_mod_time >= remote_mod_time:
-            print(f"Local file '{local_file}' is up-to-date. Skipping download.")
+            pass 
+            # print(f"Local file '{local_file}' is up-to-date. Skipping download.")
             return
 
-        print(f"Downloading '{remote_file_path}' to '{local_file}'...")
+        # print(f"Downloading '{remote_file_path}' to '{local_file}'...")
         # Download the file content.
         file_data = self.api_proxy.download_file(remote_file_path)
 
