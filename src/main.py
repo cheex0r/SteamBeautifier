@@ -18,7 +18,7 @@ from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeRemainingColumn
 from rich.panel import Panel
 from rich.text import Text
-from .version import __version__
+from version import __version__
 
 HEADER = r"""
  ____    __                                                             

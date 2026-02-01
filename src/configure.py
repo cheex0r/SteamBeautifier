@@ -1,5 +1,4 @@
 from filemanagers.config_file_manager import ConfigFileManager
-import os
 
 def main():
     print("Launching Steam Beautifier Configuration Wizard...")
