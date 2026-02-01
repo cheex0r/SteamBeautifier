@@ -75,7 +75,7 @@ If you want to build the executable yourself, follow these steps:
 3.  **Build Executable**:
     From the project root directory:
     ```powershell
-    pyinstaller --noconfirm --onefile --windowed --name "steam_beautifier" --add-data "config_schema.json;."  "src/main.py"
+    pyinstaller --noconfirm --onefile --name "steam_beautifier" --add-data "config_schema.json;."  "src/main.py"
     ```
 
 4.  **Create Installer**:
