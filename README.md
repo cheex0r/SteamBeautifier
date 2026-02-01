@@ -41,6 +41,47 @@ If you prefer to run *Steam Beautifier* directly as a Python app, make sure you 
    ```bash
    git clone https://github.com/cheex0r/SteamBeautifier.git
    cd  SteamBeautifier
+   ```
+
+2.  **Install dependencies**:
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+3.  **Run the application**:
+    ```bash
+    python src/main.py
+    ```
+
+### Building on Windows
+
+If you want to build the executable yourself, follow these steps:
+
+1.  **Prerequisites**:
+    - Python 3.10+
+    - [Inno Setup](https://jrsoftware.org/isdl.php) (for creating the installer)
+
+2.  **Setup Environment**:
+    ```powershell
+    # Create and activate virtual environment
+    python -m venv venv
+    .\venv\Scripts\activate
+
+    # Install dependencies
+    pip install -r requirements.txt
+    pip install pyinstaller
+    ```
+
+3.  **Build Executable**:
+    From the project root directory:
+    ```powershell
+    pyinstaller --noconfirm --onefile --windowed --name "steam_beautifier" --add-data "config_schema.json;."  "src/main.py"
+    ```
+
+4.  **Create Installer**:
+    - Open `packaging/windows/steam_beautifier.iss` with Inno Setup Compiler.
+    - Compile the script.
+    - The installer will be generated in `packaging/windows/Output`.
 
 ## Usage
 

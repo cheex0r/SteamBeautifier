@@ -17,7 +17,7 @@ AllowNoIcons=yes
 AlwaysRestart=no
 
 [Files]
-Source: "..\..\installer\windows\dist\steam_beautifier.exe"; DestDir: "{app}"
+Source: "..\..\dist\steam_beautifier.exe"; DestDir: "{app}"
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a &desktop icon"; GroupDescription: "Additional icons:"; Flags: unchecked
