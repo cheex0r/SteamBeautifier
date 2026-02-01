@@ -76,6 +76,7 @@ If you want to build the executable yourself, follow these steps:
     From the project root directory:
     ```powershell
     pyinstaller --noconfirm --onefile --name "steam_beautifier" --add-data "config_schema.json;."  "src/main.py"
+    pyinstaller --noconfirm --onefile --name "steam_beautifier_config" --add-data "config_schema.json;."  "src/configure.py"
     ```
 
 4.  **Create Installer**:
@@ -86,8 +87,8 @@ If you want to build the executable yourself, follow these steps:
 ## Usage
 Steam Beautifier is split into two executables:
 
-1.  **steam-beautifier-config.exe**: Run this first to configure your settings (Steam ID, API keys, Cloud sync, etc.).
-2.  **steam-beautifier.exe**: Run this to perform the actual sync and launch Steam. This is what you should set to run on startup.
+1.  **steam_beautifier_config.exe**: Run this first to configure your settings (Steam ID, API keys, Cloud sync, etc.).
+2.  **steam_beautifier.exe**: Run this to perform the actual sync and launch Steam. This is what you should set to run on startup.
 
 If you run `steam-beautifier.exe` without configuring it first, it will automatically launch the setup utility so you can configure it.
 

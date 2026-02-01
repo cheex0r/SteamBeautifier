@@ -19,14 +19,14 @@ AlwaysRestart=no
 
 [Files]
 Source: "..\..\dist\steam_beautifier.exe"; DestDir: "{app}"
-Source: "..\..\dist\steam-beautifier-config.exe"; DestDir: "{app}"
+Source: "..\..\dist\steam_beautifier_config.exe"; DestDir: "{app}"
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a &desktop icon"; GroupDescription: "Additional icons:"; Flags: unchecked
 
 [Icons]
 Name: "{group}\Steam Beautifier"; Filename: "{app}\steam_beautifier.exe";
-Name: "{group}\Steam Beautifier Configuration"; Filename: "{app}\steam-beautifier-config.exe";
+Name: "{group}\Steam Beautifier Configuration"; Filename: "{app}\steam_beautifier_config.exe";
 Name: "{userdesktop}\Steam Beautifier"; Filename: "{app}\steam_beautifier.exe"; Tasks: desktopicon
 
 [Run]
