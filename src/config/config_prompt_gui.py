@@ -31,10 +31,11 @@ class ConfigPromptGui:
             row += 1
 
         # Place the Save button below the form
-        self.save_button = tk.Button(root, text="Save", command=self.root.quit)
+        self.save_button = tk.Button(root, text="Save", command=self._save_config)
         self.save_button.pack(pady=10)  # Use pack for the Save button
 
         self._update_visibility()
+        self.final_config = None
 
 
     def add_item_to_group(self, group, key, config, row):
@@ -94,12 +95,23 @@ class ConfigPromptGui:
             entry.config(show="*")
 
 
+    def _save_config(self):
+        """Read all values from widgets before destroying the window."""
+        self.final_config = {}
+        for key, var in self.config.items():
+            self.final_config[key] = var.get()
+        self.root.quit()
+
+
     def get_config(self):
         self.root.mainloop()
-        config = {}
-        for key, var in self.config.items():
-            config[key] = var.get()
+        
+        # If the window was closed with X, final_config will be None.
+        if self.final_config is None:
+            return None
 
+        config = self.final_config
+        
         if config.get('dropbox_sync') and \
            config.get('dropbox_app_key') and \
            config.get('dropbox_app_secret') and \
