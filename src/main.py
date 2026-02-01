@@ -18,6 +18,7 @@ from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeRemainingColumn
 from rich.panel import Panel
 from rich.text import Text
+from version import __version__
 
 HEADER = r"""
  ____    __                                                             
@@ -41,7 +42,7 @@ HEADER = r"""
 console = Console()
 
 def main():
-    console.print(Panel(Text(HEADER, justify="left", style="bold cyan"), title="Welcome", subtitle="v0.1.0"))
+    console.print(Panel(Text(HEADER, justify="left", style="bold cyan"), title="Welcome", subtitle=f"v{__version__}"))
     
     with Progress(
         SpinnerColumn(),
