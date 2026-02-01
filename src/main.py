@@ -68,9 +68,9 @@ def main():
         if config['launch'] or config['bigpicture']:
             launch_task = progress.add_task("[yellow]Launching Steam...", total=None)
             launch_steam(config['bigpicture'])
-            progress.update(launch_task, completed=100)
+            progress.update(launch_task, total=100, completed=100)
         
-        progress.update(setup_task, completed=100, visible=False)
+        progress.update(setup_task, total=100, completed=100, visible=False)
 
         steam_path = get_steam_path()
         steam_id64s = config.get('steam_id', '*')
