@@ -63,6 +63,12 @@ def main():
         if config['remove_whats_new']:
             progress.update(setup_task, description="[green]Removing 'What's New' section...")
             remove_whats_new()
+            progress.console.print("[green]✔ 'What's New' section removed[/green]")
+
+        if config['launch'] or config['bigpicture']:
+            launch_task = progress.add_task("[yellow]Launching Steam...", total=None)
+            launch_steam(config['bigpicture'])
+            progress.update(launch_task, completed=100)
         
         progress.update(setup_task, completed=100, visible=False)
 
@@ -78,10 +84,7 @@ def main():
             _run_task_for_user(config, steam_path, steam_id, progress)
             progress.update(user_task, completed=100) # Keep visible so we know which user was processed
 
-        if config['launch'] or config['bigpicture']:
-            launch_task = progress.add_task("[yellow]Launching Steam...", total=None)
-            launch_steam(config['bigpicture'])
-            progress.update(launch_task, completed=100)
+
 
     console.print("[bold green]All tasks completed successfully![/bold green]")
 
