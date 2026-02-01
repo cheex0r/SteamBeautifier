@@ -84,8 +84,12 @@ If you want to build the executable yourself, follow these steps:
     - The installer will be generated in `packaging/windows/Output`.
 
 ## Usage
+Steam Beautifier is split into two executables:
 
-Upon first launch, *Steam Beautifier* will guide you through a configuration process using a simple GUI. This setup allows you to customize how the utility operates and what features you’d like to enable.
+1.  **steam-beautifier-config.exe**: Run this first to configure your settings (Steam ID, API keys, Cloud sync, etc.).
+2.  **steam-beautifier.exe**: Run this to perform the actual sync and launch Steam. This is what you should set to run on startup.
+
+If you run `steam-beautifier.exe` without configuring it first, it will automatically launch the setup utility so you can configure it.
 
 ### Initial Configuration
 

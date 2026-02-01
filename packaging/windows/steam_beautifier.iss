@@ -5,7 +5,8 @@
 AppId={{3a7441d1-22be-49f6-b612-b34b2b8bae26}}
 AppName=Steam Beautifier
 AppVersion={#AppVersion}
-UsePreviousAppDir=no
+UsePreviousAppDir=yes
+DirExistsWarning=no
 DefaultDirName={pf}\Steam Beautifier
 DefaultGroupName=Steam Beautifier
 OutputDir=Output
@@ -18,12 +19,14 @@ AlwaysRestart=no
 
 [Files]
 Source: "..\..\dist\steam_beautifier.exe"; DestDir: "{app}"
+Source: "..\..\dist\steam-beautifier-config.exe"; DestDir: "{app}"
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a &desktop icon"; GroupDescription: "Additional icons:"; Flags: unchecked
 
 [Icons]
 Name: "{group}\Steam Beautifier"; Filename: "{app}\steam_beautifier.exe";
+Name: "{group}\Steam Beautifier Configuration"; Filename: "{app}\steam-beautifier-config.exe";
 Name: "{userdesktop}\Steam Beautifier"; Filename: "{app}\steam_beautifier.exe"; Tasks: desktopicon
 
 [Run]

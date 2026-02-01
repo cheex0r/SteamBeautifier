@@ -58,6 +58,14 @@ def main():
         config_file_manager = ConfigFileManager()
         config = config_file_manager.load_or_create_preferences()
 
+        if not config:
+            progress.console.print("[yellow]Configuration not found. Launching setup...[/yellow]")
+            config = config_file_manager.edit_preferences(use_gui=True)
+            
+            if not config:
+                progress.console.print("[red]Setup cancelled. Exiting.[/red]")
+                return
+
         start_on_boot(config.get('start_on_boot', False))
         
         if config['remove_whats_new']:

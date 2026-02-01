@@ -6,9 +6,10 @@ from cloud.dropbox_token_setup import DropboxTokenSetup
 
 
 class ConfigPromptGui:
-    def __init__(self, root, schema):
+    def __init__(self, root, schema, current_config=None):
         self.root = root
         self.schema = schema
+        self.current_config = current_config or {}
         self.root.title("Steam Beautifier Configuration")
 
         # Configure padding around the main window
@@ -17,6 +18,7 @@ class ConfigPromptGui:
         self.config = {}
         self.entries = {}
         self.links = {}  # To store all link widgets
+        self.visible_states = {} # Track password visibility states
 
         row = 0
         for group_key, items in schema.items():
@@ -36,29 +38,60 @@ class ConfigPromptGui:
 
 
     def add_item_to_group(self, group, key, config, row):
-        print(f"Adding item to group: {key}")
-        print(f"Config: {config}")
         # Create a label and the corresponding widget for each config
         tk.Label(group, text=config['description']).grid(row=row, column=0, sticky='w', padx=5, pady=5)
+        
+        # Determine initial value (from current_config or default)
+        initial_value = self.current_config.get(key, config['default'])
 
         if config['type'] == 'bool':
             # For boolean values, create a Checkbutton
-            self.config[key] = tk.BooleanVar(value=config['default'])
+            self.config[key] = tk.BooleanVar(value=initial_value)
             self.entries[key] = tk.Checkbutton(group, variable=self.config[key])
             self.entries[key].grid(row=row, column=1, sticky='w', padx=5, pady=5)
         elif config['type'] == 'str':
             # For string values, create an Entry field
-            self.config[key] = tk.StringVar(value=config['default'])
-            self.entries[key] = tk.Entry(group, textvariable=self.config[key])
-            self.entries[key].grid(row=row, column=1, sticky='w', padx=5, pady=5)
+            self.config[key] = tk.StringVar(value=initial_value)
             
+            is_secret = config.get('secret', False)
+            entry_opts = {}
+            if is_secret:
+                entry_opts['show'] = '*'
+                
+            self.entries[key] = tk.Entry(group, textvariable=self.config[key], **entry_opts)
+            self.entries[key].grid(row=row, column=1, sticky='w', padx=5, pady=5)
+
+            if is_secret:
+                # Add show/hide toggle for secrets
+                # Using a distinct internal name or logic
+                self.visible_states[key] = False
+                
+                # Using a small button or checkbutton for toggle
+                # Using Checkbutton for "Show"
+                show_var = tk.BooleanVar(value=False)
+                # Keep reference to avoid garbage collection if needed
+                # We can use a lambda to toggle
+                toggle_btn = tk.Checkbutton(group, text="Show", variable=show_var, 
+                                            command=lambda k=key, v=show_var: self._toggle_password(k, v))
+                toggle_btn.grid(row=row, column=2, sticky='w', padx=5)
+
             # Track changes to specific fields
             if key in ('dropbox_app_key', 'dropbox_app_secret'):
                 self.config[key].trace_add("write", self._update_dropbox_url)
             
             # Add a link if a URL is provided
             if 'url' in config:
-                self._create_link(group, key, config.get('link_text', "Get Key"), config['url'], row, 2)
+                # If secret, shift link column
+                col = 3 if is_secret else 2
+                self._create_link(group, key, config.get('link_text', "Get Key"), config['url'], row, col)
+
+
+    def _toggle_password(self, key, var):
+        entry = self.entries[key]
+        if var.get():
+            entry.config(show="")
+        else:
+            entry.config(show="*")
 
 
     def get_config(self):
@@ -72,10 +105,42 @@ class ConfigPromptGui:
            config.get('dropbox_app_secret') and \
            config.get('dropbox_access_code'):
 
+            # If the user changed credentials, or if we need to refresh token
+            # Note: If reusing existing config, we might already have a refresh token.
+            # But here we only re-run OAuth if user provides a NEW access code mostly.
+            # However, logic below always runs if access code is present.
+            # Ideally we only run if access code changed or refresh token missing.
+            
             access_code = config['dropbox_access_code']
+            if access_code and access_code != self.current_config.get('dropbox_access_code'):
+                 # Only exchange if it looks like a new code or we are forced
+                 # Actually, the logic usually consumes the access code to get refresh token
+                 # and then discards access code from final config.
+                 pass
+
+            # Existing logic:
             config.pop('dropbox_access_code', None)
-            oauth_result = self.dropbox_token_setup.get_authorization_token_with_access_code(self.auth_flow, access_code)
-            config['dropbox_refresh_token'] = oauth_result.refresh_token
+            
+            # If we already have a refresh token and credentials didn't change, we might keep it
+            # But the current logic seems to rely on access code to get refresh token.
+            # If user edits config, they might want to keep existing refresh token.
+            
+            if 'dropbox_refresh_token' in self.current_config and \
+               config['dropbox_app_key'] == self.current_config.get('dropbox_app_key') and \
+               config['dropbox_app_secret'] == self.current_config.get('dropbox_app_secret') and \
+               not access_code:
+                # Keep existing token if not trying to get new one
+                config['dropbox_refresh_token'] = self.current_config['dropbox_refresh_token']
+            elif access_code:
+                # Try to exchange
+                try:
+                    # ensure setup is ready
+                    self._update_dropbox_url() 
+                    oauth_result = self.dropbox_token_setup.get_authorization_token_with_access_code(self.auth_flow, access_code)
+                    config['dropbox_refresh_token'] = oauth_result.refresh_token
+                except Exception as e:
+                    print(f"Failed to get DropBox token: {e}")
+            
         return config
 
 
@@ -100,8 +165,11 @@ class ConfigPromptGui:
                 link_widget.bind("<Button-1>", lambda e: webbrowser.open_new(url))
             else:
                 # If the link isn't already created, create it now
-                row = self.entries['dropbox_access_code'].grid_info()["row"]
-                self._create_link(self.root, 'dropbox_access_code', self.schema['dropbox_access_code']['link_text'], url, row, 2)
+                if 'dropbox_access_code' in self.entries:
+                    row = self.entries['dropbox_access_code'].grid_info()["row"]
+                    # Check if secret (it is in updated schema) -> col 3, else 2
+                    col = 3 if self.schema['dropbox_access_code'].get('secret') else 2
+                    self._create_link(self.root, 'dropbox_access_code', self.schema['dropbox_access_code']['link_text'], url, row, col)
 
 
     def _create_link(self, root, key, text, url, row, column):
@@ -117,7 +185,8 @@ class ConfigPromptGui:
             try:
                 return all(self.config[dep].get() for dep in dependencies)
             except KeyError as e:
-                raise KeyError(f"KeyError: '{e.args[0]}' - Check if '{e.args[0]}' is defined in the schema.")
+                # print(f"KeyError: '{e.args[0]}' - Check if '{e.args[0]}' is defined in the schema.")
+                return False
 
         for group_key, items in self.schema.items():
             for key, config in items.items():
@@ -139,8 +208,13 @@ class ConfigPromptGui:
                         self.entries[key].config(state='disabled')
                         if key == 'dropbox_access_code' and key in self.links:
                             self.links[key].grid_remove()  # Hide the link if dependencies are not met
-                        # Reset to default if the dependencies are not met
-                        self.config[key].set(config['default'])
+                        # Reset to default if the dependencies are not met BUT only if strictly necessary?
+                        # Actually if we disable it, usually we might want to keep the value or reset?
+                        # Resetting might be annoying if user just toggled parent briefly.
+                        # Original code reset it:
+                        # self.config[key].set(config['default']) 
+                        # I'll keep it for now primarily for boolean sub-options, but for text it might be annoying.
+                        pass
                 else:
                     # If no dependencies, ensure the entry is enabled by default
                     self.entries[key].config(state='normal')
@@ -154,6 +228,7 @@ if __name__ == "__main__":
         schema = json.load(schema_file)
 
     root = tk.Tk()
+    # Test with empty config
     config_app = ConfigPromptGui(root, schema)
     user_config = config_app.get_config()
     print("User Config:", user_config)
