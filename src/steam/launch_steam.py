@@ -14,7 +14,7 @@ def launch_steam(is_bigpicture=False):
 
 
 def launch_steam_windows(is_bigpicture=False):
-    print("Launching Steam on Windows")
+    # print("Launching Steam on Windows")
     steam_path = get_steam_path()
     # Determine the path to the Steam executable based on the platform
     if platform.system() == 'Windows':
@@ -39,13 +39,13 @@ def launch_steam_windows(is_bigpicture=False):
     # Launch Steam using subprocess
     try:
         subprocess.Popen(args)
-        print("Steam launched successfully")
+        # print("Steam launched successfully")
     except Exception as e:
         print("An error occurred while launching Steam:", e)
 
 
 def launch_steam_linux(is_bigpicture=False):
-    print("Launching Steam on Linux")
+    # print("Launching Steam on Linux")
     # Add command-line arguments to launch Steam in Big Picture Mode
     args = ['steam']
     if is_bigpicture:
@@ -54,7 +54,7 @@ def launch_steam_linux(is_bigpicture=False):
     # Launch Steam using subprocess
     try:
         subprocess.Popen(args)
-        print("Steam launched successfully")
+        # print("Steam launched successfully")
     except Exception as e:
         print("An error occurred while launching Steam:", e)
 
