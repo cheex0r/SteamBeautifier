@@ -83,6 +83,53 @@ If you want to build the executable yourself, follow these steps:
     - Compile the script.
     - The installer will be generated in `packaging/windows/Output`.
 
+### Building on Linux
+
+1.  **Prerequisites**:
+    - Python 3.10+
+    - `pip`
+
+2.  **Setup Environment**:
+    ```bash
+    # Create and activate virtual environment
+    python3 -m venv venv
+    source venv/bin/activate
+
+    # Install dependencies
+    pip install -r requirements.txt
+    pip install pyinstaller
+    ```
+
+3.  **Build Binary**:
+    From the project root directory:
+    ```bash
+    pyinstaller --noconfirm --onefile --name "steam_beautifier" --add-data "config_schema.json:." "src/main.py"
+    ```
+    *(Note: separators for `--add-data` are different on Linux: `:` instead of `;`)*
+
+## Developer Release Workflow
+
+To release a new version that triggers the auto-update for users:
+
+1.  **Update Version**:
+    - Open `src/version.py`.
+    - Increment the `__version__` variable (e.g., change `0.1.2` to `0.1.3`).
+
+2.  **Build for All Platforms**:
+    - **Windows**: Run the Windows build command. Output: `dist/steam_beautifier.exe`.
+    - **Linux**: Run the Linux build command. Output: `dist/steam_beautifier`.
+
+3.  **Create GitHub Release**:
+    - Commit your changes and push to GitHub.
+    - Create a new Tag matching the version (e.g., `v0.1.3`).
+    - Title the release identically (e.g., `v0.1.3`).
+
+4.  **Upload Assets**:
+    - **CRITICAL**: You must upload the binary files as assets to the release.
+    - Upload `steam_beautifier.exe` (for Windows users).
+    - Upload `steam_beautifier` (for Linux users).
+    - *Note: Do not rename these assets, as the auto-updater looks for these exact filenames.*
+
 ## Usage
 
 Upon first launch, *Steam Beautifier* will guide you through a configuration process using a simple GUI. This setup allows you to customize how the utility operates and what features you’d like to enable.

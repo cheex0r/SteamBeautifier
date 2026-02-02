@@ -2,6 +2,8 @@ import os
 import sys
 import subprocess
 import requests
+import platform
+import stat
 from packaging import version
 from rich.console import Console
 
@@ -42,9 +44,14 @@ class UpdateManager:
         assets = release_data.get("assets", [])
         download_url = None
         for asset in assets:
-            if asset["name"] == "steam_beautifier.exe":
-                download_url = asset["browser_download_url"]
-                break
+            if platform.system() == "Windows":
+                 if asset["name"] == "steam_beautifier.exe":
+                    download_url = asset["browser_download_url"]
+                    break
+            else: # Linux/Mac
+                if asset["name"] == "steam_beautifier":
+                    download_url = asset["browser_download_url"]
+                    break
         
         if not download_url:
             self.console.print("[red]Update found, but no suitable executable asset found in the release.[/red]")
@@ -55,6 +62,10 @@ class UpdateManager:
         try:
             # Download new executable
             new_exe_path = sys.executable + ".new"
+            if platform.system() != "Windows":
+                 # On Linux, the executable name might not have an extension, but sys.executable should be correct.
+                 pass
+            
             response = requests.get(download_url, stream=True)
             response.raise_for_status()
             
@@ -62,6 +73,11 @@ class UpdateManager:
                 for chunk in response.iter_content(chunk_size=8192):
                     f.write(chunk)
             
+            # Make executable on Linux/Unix
+            if platform.system() != "Windows":
+                st = os.stat(new_exe_path)
+                os.chmod(new_exe_path, st.st_mode | stat.S_IEXEC)
+
             self.console.print("[green]Download complete. Restarting to apply update...[/green]")
             
             # Create batch script to swap files and restart
@@ -76,15 +92,10 @@ class UpdateManager:
 
     def _restart_and_swap(self, new_exe_path):
         current_exe = sys.executable
-        batch_script_path = "update.bat"
         
-        # Batch script content:
-        # 1. Wait for current process to exit
-        # 2. Move new exe to current exe
-        # 3. Launch current exe
-        # 4. Delete self
-        
-        script_content = f"""
+        if platform.system() == "Windows":
+            batch_script_path = "update.bat"
+            script_content = f"""
 @echo off
 timeout /t 2 /nobreak > NUL
 :loop
@@ -97,8 +108,35 @@ move /y "{new_exe_path}" "{current_exe}"
 start "" "{current_exe}"
 del "%~f0"
 """
-        with open(batch_script_path, "w") as f:
-            f.write(script_content)
+            with open(batch_script_path, "w") as f:
+                f.write(script_content)
+                
+            subprocess.Popen([batch_script_path], shell=True)
+            sys.exit(0)
+        
+        else: # Linux
+            update_script_path = "update.sh"
+            # Linux script:
+            # 1. Wait for PID to close (optional, or just sleep)
+            # 2. Move new -> current
+            # 3. Relaunch (requires user to potentialy authenticate if system-wide? Assume user-local for now)
+            # Warning: If running as service, relaunching might detach from service controller.
+            # Ideally we should just exit and let systemd restart it if configured. 
+            # But the requirement is "automatic update", implying seamlessness.
+            # We will try to exec the new one.
             
-        subprocess.Popen([batch_script_path], shell=True)
-        sys.exit(0)
+            script_content = f"""#!/bin/bash
+sleep 2
+mv "{new_exe_path}" "{current_exe}"
+chmod +x "{current_exe}"
+"{current_exe}" &
+rm "$0"
+"""
+            with open(update_script_path, "w") as f:
+                f.write(script_content)
+            
+            st = os.stat(update_script_path)
+            os.chmod(update_script_path, st.st_mode | stat.S_IEXEC)
+            
+            subprocess.Popen([f"./{update_script_path}"], shell=False)
+            sys.exit(0)
