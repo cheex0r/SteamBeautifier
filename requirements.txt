@@ -6,3 +6,4 @@ rich==13.9.4
 vdf==3.4
 winshell==0.6
 pywin32==311
+packaging>=23.0

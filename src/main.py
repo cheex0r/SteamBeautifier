@@ -13,6 +13,7 @@ from filemanagers.dropbox_manifest_file_manager import DropboxManifestFileManage
 from api_proxies.nextcloud_api_proxy import NextcloudApiProxy
 from cloud.nextcloud_manager import NextcloudManager
 from cloud.steam_grid_sync_manager import SteamGridSyncManager
+from update_manager import UpdateManager
 
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeRemainingColumn
@@ -58,7 +59,25 @@ def main():
         config_file_manager = ConfigFileManager()
         config = config_file_manager.load_or_create_preferences()
 
+
         start_on_boot(config.get('start_on_boot', False))
+
+        # Check for updates
+        if config.get('check_for_updates', True):
+            update_task = progress.add_task("[cyan]Checking for updates...", total=None)
+            update_manager = UpdateManager(__version__, console=progress.console)
+            new_release = update_manager.check_for_updates()
+            if new_release:
+                progress.console.print(f"[bold green]New version available: {new_release.get('tag_name')}[/bold green]")
+                if update_manager.perform_update(new_release):
+                    return # Exit to allow restart
+            else:
+                 progress.update(update_task, completed=100, visible=False)
+            
+            # Ensure task is marked done if no update or failed update
+            if not new_release:
+                 progress.update(update_task, completed=100, visible=False)
+
         
         if config['remove_whats_new']:
             progress.update(setup_task, description="[green]Removing 'What's New' section...")

@@ -82,7 +82,10 @@
             "url": "dropbox-access-code-generated-url",
             "link_text": "Get Dropbox Access Code",
             "default": "",
-            "depends_on": ["dropbox_sync", "dropbox_app_key"],
+            "depends_on": [
+                "dropbox_sync",
+                "dropbox_app_key"
+            ],
             "skip_cli": true
         }
     },
@@ -110,6 +113,13 @@
             "default": "",
             "depends_on": "nextcloud_sync",
             "skip_cli": true
+        }
+    },
+    "Updates": {
+        "check_for_updates": {
+            "type": "bool",
+            "description": "Automatically check for updates on startup?",
+            "default": true
         }
     }
 }
