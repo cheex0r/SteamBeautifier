@@ -53,6 +53,7 @@ class NextcloudManager:
         """
         remote_file = self._combine_folder(remote_file)
         local_mod_time = os.path.getmtime(local_file)
+        local_ctime = os.path.getctime(local_file)
         
         if remote_mod_time == -1.0:
             remote_mod_time = self.api_proxy.get_remote_file_modtime(remote_file)
@@ -60,9 +61,12 @@ class NextcloudManager:
         if remote_mod_time is None:
             pass
             # print(f"Remote file '{remote_file}' does not exist. Uploading...")
-        elif local_mod_time > remote_mod_time + 2:
+        elif abs(local_mod_time - remote_mod_time) < 2:
+             # Files are effectively in sync (timestamp match)
+             return
+        elif local_mod_time > remote_mod_time + 2 or local_ctime > remote_mod_time + 2:
             pass
-            # print(f"Local file '{local_file}' is newer. Uploading...")
+            # print(f"Local file '{local_file}' is newer (Mtime or Ctime). Uploading...")
         else:
             pass
             # print(f"Skipping '{local_file}' as remote file is up-to-date.")
@@ -96,14 +100,17 @@ class NextcloudManager:
         # Check if the local file exists and get its modification time.
         if os.path.exists(local_file):
             local_mod_time = os.path.getmtime(local_file)
+            local_ctime = os.path.getctime(local_file)
         else:
             local_mod_time = None
+            local_ctime = None
 
         # If the local file exists and is up-to-date, skip the download.
-        if local_mod_time is not None and local_mod_time >= remote_mod_time:
-            pass 
-            # print(f"Local file '{local_file}' is up-to-date. Skipping download.")
-            return
+        if local_mod_time is not None:
+             if local_mod_time >= remote_mod_time or local_ctime >= remote_mod_time:
+                pass 
+                # print(f"Local file '{local_file}' is up-to-date. Skipping download.")
+                return
 
         # print(f"Downloading '{remote_file_path}' to '{local_file}'...")
         # Download the file content.
@@ -132,3 +139,15 @@ class NextcloudManager:
         """
         remote_folder = self._combine_folder(remote_folder)
         return self.api_proxy.list_remote_files(remote_folder)
+
+
+    def delete_file(self, remote_file):
+        """
+        Delete a remote file.
+        
+        Args:
+            remote_file (str): The remote file path relative to base.
+        """
+        remote_file_path = self._combine_folder(remote_file)
+        self.api_proxy.delete_file(remote_file_path)
+

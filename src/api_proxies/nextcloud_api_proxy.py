@@ -186,3 +186,25 @@ class NextcloudApiProxy:
                 raise Exception(f"Failed to download. Status: {response.status_code}")
         except Exception as e:
             print(f"Error downloading: {e}")
+
+
+    def delete_file(self, remote_file):
+        """
+        Delete a file from Nextcloud.
+        
+        Args:
+            remote_file (str): The remote file path.
+        """
+        remote_url = self._get_remote_url(remote_file)
+        try:
+            response = self.session.delete(remote_url)
+            if response.status_code in [200, 204]:
+                # print(f"Deleted {remote_file}")
+                pass
+            elif response.status_code == 404:
+                print(f"File not found to delete: {remote_url}")
+            else:
+                raise Exception(f"Failed to delete. Status: {response.status_code}")
+        except Exception as e:
+            print(f"Error deleting: {e}")
+

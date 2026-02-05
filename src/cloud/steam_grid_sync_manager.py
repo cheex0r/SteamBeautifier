@@ -97,6 +97,44 @@ class SteamGridSyncManager:
             filename, remote_mod_time = item
             local_file = os.path.join(local_dir, filename)
             cloud_filename = f"{STEAM_GRID_SYNC_DIR}/{filename}"
+
+            # Conflict Resolution: Check for alternative extensions locally
+            # 1. Parse current remote filename
+            try:
+                appid, postfix, extension = extract_appid_and_postfix(filename)
+                
+                # 2. Look for any local file matching `appid` + `postfix` + .*
+                # e.g. if remote is 123.jpg, look for 123.png, 123.jpeg, etc.
+                possible_conflicts = []
+                for f in os.listdir(local_dir):
+                    if f == filename: continue # Same file is handled by standard sync logic
+                    
+                    # Optimization: Filter by startswith first
+                    if f.startswith(appid):
+                         try:
+                            l_appid, l_postfix, l_ext = extract_appid_and_postfix(f)
+                            if l_appid == appid and l_postfix == postfix:
+                                possible_conflicts.append(f)
+                         except ValueError:
+                             continue
+
+                # 3. Compare with conflicts
+                for conflict_file in possible_conflicts:
+                    conflict_path = os.path.join(local_dir, conflict_file)
+                    l_mtime = os.path.getmtime(conflict_path)
+                    l_ctime = os.path.getctime(conflict_path)
+                    
+                    # Logic: If Local Alternative is NEWER -> Delete Remote File, Skip Download
+                    if l_mtime > remote_mod_time or l_ctime > remote_mod_time:
+                        return 
+                    
+                    # Logic: If Local Alternative is OLDER -> Delete Local File (allow download to replace it)
+                    else:
+                        os.remove(conflict_path)
+
+            except ValueError:
+                pass # Filename parse error, proceed normally
+
             self.cloud_manager.download_file(cloud_filename, local_file)
 
         with concurrent.futures.ThreadPoolExecutor() as executor:
