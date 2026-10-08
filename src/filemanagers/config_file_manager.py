@@ -6,6 +6,7 @@ import tkinter as tk
 from config.config_prompt_cli import ConfigPromptCli
 from config.config_prompt_gui import ConfigPromptGui
 from filemanagers.file_manager_base import FileManagerBase
+from steam.steam_directory_finder import is_steam_deck
 
 
 class ConfigFileManager(FileManagerBase):
@@ -34,16 +35,20 @@ class ConfigFileManager(FileManagerBase):
         current_config = self.load_or_create_preferences()
         schema = self._get_config_schema()
         
+        # On Steam Deck, auto-switch to CLI mode since GUI is too tall
+        deck_mode = is_steam_deck()
+        if deck_mode:
+            use_gui = False
+            print("\n[Steam Deck Detected] Switching to CLI mode (GUI is too tall for screen)")
+        
         if use_gui:
             root = tk.Tk()
             config_prompt = ConfigPromptGui(root, schema, current_config=current_config)
             user_config = config_prompt.get_config()
             root.destroy()
         else:
-            # CLI - likely not fully supported for "edit" flow with current_config yet in ConfigPromptCli
-            # But preserving interface.
-            config_prompt = ConfigPromptCli(None, schema) # CLI doesn't use root
-            user_config = config_prompt.get_config()
+            config_prompt = ConfigPromptCli()
+            user_config = config_prompt.get_config(schema)
 
         if user_config:
             super().save_file(user_config)

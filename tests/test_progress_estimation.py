@@ -71,5 +71,32 @@ class TestThreadPoolExecutorBatchSize(unittest.TestCase):
                        "steam_grid_sync_manager.py should use max_workers=25")
 
 
+class TestConfigFileManagerDockMode(unittest.TestCase):
+    """Test that config file manager detects Deck mode."""
+
+    def test_deck_detection_imports(self):
+        """Verify ConfigFileManager imports is_steam_deck."""
+        import ast
+        import os
+        
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        config_manager_path = os.path.join(script_dir, '..', 'src', 'filemanagers', 'config_file_manager.py')
+        
+        with open(config_manager_path, 'r') as f:
+            content = f.read()
+        
+        # Check that is_steam_deck is imported
+        self.assertIn('from steam.steam_directory_finder import is_steam_deck', content,
+                     "ConfigFileManager should import is_steam_deck")
+        
+        # Check that deck_mode is used
+        self.assertIn('deck_mode = is_steam_deck()', content,
+                     "ConfigFileManager should set deck_mode from is_steam_deck()")
+        
+        # Check that CLI mode is forced on Deck
+        self.assertIn('use_gui = False', content,
+                     "ConfigFileManager should set use_gui = False on Deck")
+
+
 if __name__ == '__main__':
     unittest.main()
