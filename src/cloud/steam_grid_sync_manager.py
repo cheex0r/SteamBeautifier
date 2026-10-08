@@ -1,10 +1,25 @@
 import os
 import concurrent.futures
+import time
 
 from steam.steam_image_handler import extract_appid_and_postfix
 
 STEAM_GRID_SYNC_DIR = "SteamGridSync"
 NON_STEAM_DIR = "SteamShortcutGridSync"
+
+
+def format_time_remaining(seconds):
+    """Format seconds into human-readable time string."""
+    if seconds < 60:
+        return f"{int(seconds)}s"
+    elif seconds < 3600:
+        minutes = int(seconds // 60)
+        secs = int(seconds % 60)
+        return f"{minutes}m {secs}s"
+    else:
+        hours = int(seconds // 3600)
+        minutes = int((seconds % 3600) // 60)
+        return f"{hours}h {minutes}m"
 
 class SteamGridSyncManager:
     def __init__(self, cloud_manager, non_steam_games):
@@ -63,11 +78,22 @@ class SteamGridSyncManager:
 
             self.cloud_manager.upload_file(local_file, cloud_filename, remote_mod_time=remote_mod_time)
 
-        with concurrent.futures.ThreadPoolExecutor() as executor:
+        files_processed = 0
+        start_time = time.time()
+        with concurrent.futures.ThreadPoolExecutor(max_workers=25) as executor:
             futures = [executor.submit(process_upload, f) for f in files_to_process]
             for future in concurrent.futures.as_completed(futures):
+                files_processed += 1
                 if progress and task_id:
                     progress.update(task_id, advance=1)
+                    # Update description with estimated time remaining
+                    if files_processed >= 5:
+                        elapsed = time.time() - start_time
+                        avg_time = elapsed / files_processed
+                        remaining = len(files_to_process) - files_processed
+                        est_remaining = avg_time * remaining
+                        progress.update(task_id, 
+                                      description=f"[green]☁️  Nextcloud: Syncing to cloud... ~{format_time_remaining(est_remaining)} remaining")
 
 
     def download_steam_games_grid(self, local_dir, progress=None, task_id=None):
@@ -137,11 +163,22 @@ class SteamGridSyncManager:
 
             self.cloud_manager.download_file(cloud_filename, local_file)
 
-        with concurrent.futures.ThreadPoolExecutor() as executor:
+        files_processed = 0
+        start_time = time.time()
+        with concurrent.futures.ThreadPoolExecutor(max_workers=25) as executor:
             futures = [executor.submit(process_download_steam, item) for item in remote_files_list]
             for future in concurrent.futures.as_completed(futures):
+                files_processed += 1
                 if progress and task_id:
                     progress.update(task_id, advance=1)
+                    # Update description with estimated time remaining
+                    if files_processed >= 5:
+                        elapsed = time.time() - start_time
+                        avg_time = elapsed / files_processed
+                        remaining = len(remote_files_list) - files_processed
+                        est_remaining = avg_time * remaining
+                        progress.update(task_id, 
+                                      description=f"[green]☁️  Nextcloud: Syncing from cloud... ~{format_time_remaining(est_remaining)} remaining")
 
 
     def download_non_steam_games_grid(self, local_dir, progress=None, task_id=None):
@@ -184,8 +221,19 @@ class SteamGridSyncManager:
                 remote_file_path = f"{NON_STEAM_DIR}/{filename}"
                 self.cloud_manager.download_file(remote_file_path, local_file)
 
-        with concurrent.futures.ThreadPoolExecutor() as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=25) as executor:
             futures = [executor.submit(process_download_non_steam, item) for item in items_to_process]
+            files_processed = 0
+            start_time = time.time()
             for future in concurrent.futures.as_completed(futures):
+                files_processed += 1
                 if progress and task_id:
                     progress.update(task_id, advance=1)
+                    # Update description with estimated time remaining
+                    if files_processed >= 5:
+                        elapsed = time.time() - start_time
+                        avg_time = elapsed / files_processed
+                        remaining = len(items_to_process) - files_processed
+                        est_remaining = avg_time * remaining
+                        progress.update(task_id, 
+                                      description=f"[green]☁️  Nextcloud: Syncing from cloud... ~{format_time_remaining(est_remaining)} remaining")

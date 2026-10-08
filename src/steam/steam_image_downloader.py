@@ -20,6 +20,21 @@ from steam.steam_id import SteamId
 
 CACHE_FILE_NAME = 'games_with_vertical_grids.json'
 
+
+def format_time_remaining(seconds):
+    """Format seconds into human-readable time string."""
+    if seconds < 60:
+        return f"{int(seconds)}s"
+    elif seconds < 3600:
+        minutes = int(seconds // 60)
+        secs = int(seconds % 60)
+        return f"{minutes}m {secs}s"
+    else:
+        hours = int(seconds // 3600)
+        minutes = int((seconds % 3600) // 60)
+        return f"{hours}h {minutes}m"
+
+
 def download_missing_images(steam_api_key, steamgriddb_api_key, steam_id: SteamId, skip_if_exists=True, progress=None, task_id=None):
     owned_games = get_owned_games(steam_api_key, steam_id)
     steam_path = get_steam_path()
@@ -29,19 +44,43 @@ def download_missing_images(steam_api_key, steamgriddb_api_key, steam_id: SteamI
         os.makedirs(steam_grid_path)
     existing_grid_images = get_appids_with_custom_images(steam_grid_path)
     steam_games_with_vertical_grid_images = get_steam_games_with_vertical_grids()
+    
     if progress and task_id:
-        progress.update(task_id, total=len(owned_games))
+        progress.update(task_id, total=len(owned_games), description="[magenta]🎨 Fetching missing art...")
+
+    images_processed = 0
+    total_time = 0
+    samples = 0
 
     for game in owned_games:
         appid = str(game['appid'])
+        
+        # Track download time for estimation (first 5 images to warm up)
+        if progress and task_id and images_processed > 0 and samples >= 5:
+            avg_time_per_image = total_time / samples
+            remaining = len(owned_games) - images_processed
+            est_remaining = avg_time_per_image * remaining
+            progress.update(task_id, 
+                          description=f"[magenta]🎨 Fetching missing art... ~{format_time_remaining(est_remaining)} remaining")
+        
+        start_time = time.time()
         download_missing_images_for_game(steamgriddb_api_key,
                                          appid,
                                          steam_grid_path,
                                          existing_grid_images,
                                          steam_games_with_vertical_grid_images,
                                          skip_if_exists)
+        elapsed = time.time() - start_time
+        
+        # Track timing for estimation (skip first 5 to warm up)
+        if images_processed >= 5:
+            total_time += elapsed
+            samples += 1
+        images_processed += 1
+        
         if progress and task_id:
             progress.update(task_id, advance=1)
+    
     save_steam_games_with_vertical_grids(steam_games_with_vertical_grid_images)
 
 
