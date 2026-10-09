@@ -167,15 +167,27 @@ class DropboxManager:
                     return 1
                 return 0
             if progress and task_id:
-                progress.update(task_id, total=len(dropbox_file_metadata))
+                progress.update(task_id, total=len(dropbox_file_metadata), description=f"[cyan]☁️  Dropbox: Syncing from cloud...")
 
-            with concurrent.futures.ThreadPoolExecutor() as executor:
+            # Use batch size of 25 for downloads (Deck-optimized)
+            with concurrent.futures.ThreadPoolExecutor(max_workers=25) as executor:
                 futures = [executor.submit(process_file, item[0], item[1]) for item in dropbox_file_metadata.items()]
                 num_downloads = 0
+                files_processed = 0
+                start_time = time.time()
                 for future in concurrent.futures.as_completed(futures):
                     num_downloads += future.result()
+                    files_processed += 1
                     if progress and task_id:
-                         progress.update(task_id, advance=1)
+                        progress.update(task_id, advance=1)
+                        # Update description with estimated time remaining
+                        if files_processed >= 5:
+                            elapsed = time.time() - start_time
+                            avg_time = elapsed / files_processed
+                            remaining = len(dropbox_file_metadata) - files_processed
+                            est_remaining = avg_time * remaining
+                            progress.update(task_id, 
+                                          description=f"[cyan]☁️  Dropbox: Syncing from cloud... ~{format_time_remaining(est_remaining)} remaining")
             print(f"Downloaded {num_downloads} files from Dropbox")
 
         except dropbox.exceptions.ApiError as e:
@@ -308,15 +320,27 @@ class DropboxManager:
                 return 0
             
             if progress and task_id:
-                progress.update(task_id, total=total_files)
+                progress.update(task_id, total=total_files, description=f"[cyan]☁️  Dropbox: Syncing to cloud...")
 
-            with concurrent.futures.ThreadPoolExecutor() as executor:
+            # Use batch size of 25 for uploads (Deck-optimized)
+            with concurrent.futures.ThreadPoolExecutor(max_workers=25) as executor:
                 futures = [executor.submit(process_file, f) for f in files]
                 num_uploaded = 0
+                files_processed = 0
+                start_time = time.time()
                 for future in concurrent.futures.as_completed(futures):
                     num_uploaded += future.result()
+                    files_processed += 1
                     if progress and task_id:
                         progress.update(task_id, advance=1)
+                        # Update description with estimated time remaining
+                        if files_processed >= 5:
+                            elapsed = time.time() - start_time
+                            avg_time = elapsed / files_processed
+                            remaining = total_files - files_processed
+                            est_remaining = avg_time * remaining
+                            progress.update(task_id, 
+                                          description=f"[cyan]☁️  Dropbox: Syncing to cloud... ~{format_time_remaining(est_remaining)} remaining")
             print(f"Uploaded {num_uploaded} files to Dropbox")
 
 
