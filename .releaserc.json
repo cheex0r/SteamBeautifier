@@ -1,0 +1,20 @@
+{
+  "branches": ["main"],
+  "plugins": [
+    "@semantic-release/commit-analyzer",
+    "@semantic-release/release-notes-generator",
+    [
+      "@semantic-release/github",
+      {
+        "assets": ["dist/*.exe", "release/linux/*"],
+        "releasedLabels": ["Status: Released"]
+      }
+    ]
+  ],
+  "preset": "conventionalcommits",
+  "releaseRules": [
+    {"type": "release", "release": "major"},
+    {"type": "feat", "release": "minor"},
+    {"type": "fix", "release": "patch"}
+  ]
+}

@@ -205,3 +205,10 @@ cython_debug/
 # SteamBeautifier Config
 config.json
 games_with_vertical_grids.json
+
+# Release artifacts (build by CI)
+release/
+dist/
+build/
+src/*.spec
+*.spec

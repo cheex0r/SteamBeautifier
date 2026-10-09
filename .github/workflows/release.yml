@@ -1,0 +1,160 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version 1.2.1'
+        required: true
+        default: '1.2.1'
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Set version
+        run: |
+          $version = "${{ inputs.version }}"
+          $content = "__version__ = `"$version`""
+          Set-Content -Path "src/version.py" -Value $content
+          Write-Host "Version set to $version"
+
+      - name: Install dependencies
+        run: |
+          pip install pyinstaller
+          pip install -r requirements.txt
+
+      - name: Build Windows executables
+        run: |
+          pyinstaller --onefile --name "steam_beautifier" `
+            --add-data "config_schema.json;." `
+            --hidden-import "cryptography" `
+            --hidden-import "dropbox" `
+            --hidden-import "PIL" `
+            --hidden-import "requests" `
+            --hidden-import "rich" `
+            --hidden-import "vdf" `
+            --hidden-import "winshell" `
+            --hidden-import "pywin32" `
+            --console `
+            src/main.py
+            
+          pyinstaller --onefile --name "steam_beautifier_config" `
+            --add-data "config_schema.json;." `
+            --hidden-import "cryptography" `
+            --hidden-import "dropbox" `
+            --hidden-import "PIL" `
+            --hidden-import "requests" `
+            --hidden-import "rich" `
+            --hidden-import "vdf" `
+            --hidden-import "tkinter" `
+            --console `
+            src/configure.py
+
+      - name: Upload Windows executables
+        uses: actions/upload-artifact@v4
+        with:
+          name: steam-beautifier-windows
+          path: dist/
+          retention-days: 30
+
+  build-linux:
+    runs-on: ubuntu-latest
+    needs: build-windows
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Set version
+        run: |
+          echo "__version__ = '${{ inputs.version }}'" > src/version.py
+          echo "Version set to ${{ inputs.version }}"
+
+      - name: Install dependencies
+        run: |
+          pip install pyinstaller
+          pip install -r requirements.txt
+
+      - name: Build Linux executables
+        run: |
+          chmod +x scripts/build_linux.sh
+          ./scripts/build_linux.sh
+
+      - name: Upload Linux executables
+        uses: actions/upload-artifact@v4
+        with:
+          name: steam-beautifier-linux
+          path: release/linux/
+          retention-days: 30
+
+  create-release:
+    runs-on: ubuntu-latest
+    needs: [build-windows, build-linux]
+    permissions:
+      contents: write
+    steps:
+      - name: Download Windows executables
+        uses: actions/download-artifact@v4
+        with:
+          name: steam-beautifier-windows
+          path: dist/
+
+      - name: Download Linux executables
+        uses: actions/download-artifact@v4
+        with:
+          name: steam-beautifier-linux
+          path: release/linux/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist/steam_beautifier.exe
+            dist/steam_beautifier_config.exe
+            release/linux/steam_beautifier
+            release/linux/steam_beautifier_config
+          name: Release v${{ inputs.version }}
+          tag_name: v${{ inputs.version }}
+          body: |
+            ## Steam Beautifier v${{ inputs.version }}
+            
+            ### Windows Executables
+            - `steam_beautifier.exe` - Main executable
+            - `steam_beautifier_config.exe` - Configuration utility
+            
+            ### Linux Executables (for Steam Deck)
+            - `steam_beautifier` - Main executable (35MB)
+            - `steam_beautifier_config` - Configuration utility (35MB)
+            
+            ### Installation
+            #### Windows
+            1. Download `steam_beautifier_config.exe` and `steam_beautifier.exe`
+            2. Run `steam_beautifier_config.exe` to configure
+            3. Run `steam_beautifier.exe` to sync and launch Steam
+            
+            #### Steam Deck / Linux
+            1. Download `steam_beautifier` and `steam_beautifier_config`
+            2. Make executable: `chmod +x steam_beautifier steam_beautifier_config`
+            3. Run `steam_beautifier_config` to configure
+            4. Run `steam_beautifier` to sync and launch Steam
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
