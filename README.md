@@ -53,6 +53,38 @@ If you prefer to run *Steam Beautifier* directly as a Python app, make sure you 
     python src/main.py
     ```
 
+### Steam Deck / Linux
+
+#### Option 1: Standalone Executable (Recommended)
+
+1. Download the latest `steam_beautifier` and `steam_beautifier_config` executables from the [Releases](#) section.
+2. Make them executable:
+   ```bash
+   chmod +x steam_beautifier steam_beautifier_config
+   ```
+3. Run `steam_beautifier_config` to configure (first time setup).
+4. Run `steam_beautifier` to sync and launch Steam.
+
+#### Option 2: Python Installation
+
+If you prefer to install via Python:
+
+1. **Clone or download the repository**:
+   ```bash
+   git clone https://github.com/cheex0r/SteamBeautifier.git
+   cd SteamBeautifier
+   ```
+
+2. **Install dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Run the application**:
+   ```bash
+   python src/main.py
+   ```
+
 ### Building on Windows
 
 If you want to build the executable yourself, follow these steps:
