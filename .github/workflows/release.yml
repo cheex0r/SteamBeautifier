@@ -53,6 +53,7 @@ jobs:
         run: |
           pip install pyinstaller
           pip install -r requirements.txt
+          pip install -r requirements-windows.txt
 
       - name: Build Windows executables
         run: |
@@ -78,6 +79,7 @@ jobs:
             --hidden-import "rich" `
             --hidden-import "vdf" `
             --hidden-import "tkinter" `
+            --hidden-import "pywin32" `
             --console `
             src/configure.py
 
