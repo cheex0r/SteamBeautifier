@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version number (e.g., 1.2.3)'
+        description: 'Version 1.2.1'
         required: true
-        default: '1.0.0'
+        default: '1.2.1'
 
 jobs:
   build-windows:
