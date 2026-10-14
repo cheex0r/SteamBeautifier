@@ -3,7 +3,7 @@ import os
 from steam.steam_directory_finder import get_steam_path
 
 
-paths = ['steamui', 'css', 'chunk~2dcc5aaf7.css']
+paths = ['steamui', 'css', 'sp.css']
 css_class_name = "_17uEBe5Ri8TMsnfELvs8-N"
 new_guts = "display: none !important;"
 
